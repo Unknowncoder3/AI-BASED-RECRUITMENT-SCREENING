@@ -1,3 +1,7 @@
+![GitHub stars](https://img.shields.io/github/stars/Unknowncoder3/ai-recruitment-screening)
+![License](https://img.shields.io/github/license/Unknowncoder3/ai-recruitment-screening)
+![Issues](https://img.shields.io/github/issues/Unknowncoder3/ai-recruitment-screening)
+
 # 🤖 AI-Based Candidate Screening System
 
 An **AI-powered, privacy-first recruitment screening tool** that helps recruiters evaluate candidates using **resume analysis, GitHub profile analysis, academic performance, and project experience**, with **local LLM-based hiring recommendations**.
@@ -191,17 +195,8 @@ http://localhost:8501
 
 > Scores are explainable and conservative (ATS-style)
 
----
 
-## 🧠 Why This Project Is Real-World Relevant
 
-* Handles **messy PDF resumes**
-* Works **without paid APIs**
-* Uses **local LLMs for privacy**
-* Implements **rate-limit handling & caching**
-* Designed with **recruiter UX** in mind
-
----
 
 ## 🚀 Future Enhancements
 
@@ -226,4 +221,3 @@ Final Year CSBS Student | AI & Full-Stack Developer
 ## ⭐ If you like this project
 
 Give it a **star ⭐** — it helps a lot!
-# ai-recruitment-screening
