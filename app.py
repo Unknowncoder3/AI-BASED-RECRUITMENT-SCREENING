@@ -162,12 +162,14 @@ if st.session_state.stage == "screening":
 if st.session_state.stage in ["hr", "technical"]:
 
     if not st.session_state.announcement_done:
+
         name = "HR" if st.session_state.stage == "hr" else "Technical"
         st.subheader("📢 Interview Announcement")
         st.info(f"Your {name} interview will begin now.")
         speak_after_render(f"Your {name} interview will begin now.")
         st.session_state.announcement_done = True
-        st.stop()
+        st.rerun()
+
 
     with st.sidebar:
         st.subheader("📷 Live Camera")
