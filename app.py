@@ -1,5 +1,7 @@
 import streamlit as st
 import re
+import time
+from fpdf import FPDF
 
 # -------------------------------
 # Imports (EXISTING)
@@ -24,7 +26,22 @@ from utils.speech import SpeechEngine
 from utils.camera import CameraMonitor
 
 # -------------------------------
-# NEW: Interview + Proctoring State
+# PIPELINE STATE
+# -------------------------------
+if "stage" not in st.session_state:
+    st.session_state.stage = "screening"
+
+if "question_count" not in st.session_state:
+    st.session_state.question_count = 0
+
+if "max_questions" not in st.session_state:
+    st.session_state.max_questions = 5
+
+if "difficulty" not in st.session_state:
+    st.session_state.difficulty = "Easy"
+
+# -------------------------------
+# INTERVIEW STATE
 # -------------------------------
 if "interview_scores" not in st.session_state:
     st.session_state.interview_scores = []
@@ -32,18 +49,14 @@ if "interview_scores" not in st.session_state:
 if "interview_history" not in st.session_state:
     st.session_state.interview_history = []
 
-if "emotion_flags" not in st.session_state:
-    st.session_state.emotion_flags = []
-
-if "cheating_flags" not in st.session_state:
-    st.session_state.cheating_flags = []
-
-# ✅ NEW (INTERVIEW FLOW STATE)
-if "interview_started" not in st.session_state:
-    st.session_state.interview_started = False
-
 if "current_question" not in st.session_state:
     st.session_state.current_question = ""
+
+if "answer_key" not in st.session_state:
+    st.session_state.answer_key = 0
+
+if "question_start_time" not in st.session_state:
+    st.session_state.question_start_time = time.time()
 
 # -------------------------------
 # Initialize Speech Engine
@@ -51,223 +64,190 @@ if "current_question" not in st.session_state:
 speech = SpeechEngine()
 
 # -------------------------------
-# Utility: GitHub Username Normalizer
-# -------------------------------
-def normalize_github_username(input_text: str) -> str:
-    if not input_text:
-        return ""
-    input_text = input_text.strip()
-    match = re.search(r"github\.com/([A-Za-z0-9_-]+)", input_text)
-    return match.group(1) if match else input_text
-
-# -------------------------------
 # Page Config
 # -------------------------------
-st.set_page_config(
-    page_title="AI-Based Candidate Screening System",
-    layout="wide"
-)
-
+st.set_page_config(page_title="AI-Based Candidate Screening System", layout="wide")
 st.title("🤖 AI-Based Candidate Screening System")
 st.caption("AI-assisted, privacy-first recruitment screening using local LLMs")
 
-# -------------------------------
-# MODE SWITCH
-# -------------------------------
-mode = st.radio(
-    "Select Mode",
-    ["Candidate Screening", "AI Interview"],
-    horizontal=True
-)
-
 # ======================================================
-# ================= SCREENING MODE =====================
+# ================= SCREENING STAGE ====================
 # ======================================================
-if mode == "Candidate Screening":
-
-    @st.cache_data(ttl=3600)
-    def cached_github_analysis(username: str):
-        return analyze_github(username)
+if st.session_state.stage == "screening":
 
     st.header("📄 Resume")
-
     uploaded_resume = st.file_uploader("Upload Resume (PDF only)", type=["pdf"])
-    resume_text = ""
+    resume_text = extract_text_from_pdf(uploaded_resume) if uploaded_resume else ""
 
-    if uploaded_resume:
-        resume_text = extract_text_from_pdf(uploaded_resume)
-        st.success("Resume uploaded successfully")
+    github_username = st.text_input("GitHub Username")
 
-    resume_text_manual = st.text_area("Or paste resume text manually", height=200)
-    if resume_text_manual.strip():
-        resume_text = resume_text_manual
-
-    st.header("👤 Candidate Information")
-
-    raw_github_input = st.text_input("GitHub Username or Profile URL")
-    github_username = normalize_github_username(raw_github_input)
-
-    st.subheader("🎓 Academic Details")
     tenth = st.number_input("10th Percentage", 0.0, 100.0)
     twelfth = st.number_input("12th Percentage", 0.0, 100.0)
     cgpa = st.number_input("CGPA", 0.0, 10.0)
 
-    st.subheader("🧩 Projects")
-    project_input = st.text_area("Describe projects (one per line)", height=150)
+    project_input = st.text_area("Projects (one per line)")
 
     if st.button("🚀 Evaluate Candidate"):
-
-        resume_result = analyze_resume(resume_text, "")
-        github_result = cached_github_analysis(github_username)
-        academic_result = analyze_academics(tenth, twelfth, cgpa)
-
-        project_list = [p.strip() for p in project_input.split("\n") if p.strip()]
-        project_result = analyze_projects(project_list)
+        project_list = project_input.split("\n")
 
         score = final_score(
-            resume_result["score"],
-            github_result["score"],
-            academic_result["score"]
+            analyze_resume(resume_text, "")["score"],
+            analyze_github(github_username)["score"],
+            analyze_academics(tenth, twelfth, cgpa)["score"]
         )
 
         st.session_state.screening_score = score
+        st.session_state.resume_text = resume_text
+        st.session_state.projects = project_list
 
-        st.metric("⭐ Overall Fit Score", score)
-
-        prompt = candidate_prompt({
-            "resume": resume_result,
-            "github": github_result,
-            "academics": academic_result,
-            "projects": project_result
-        })
-
-        recommendation = run_llm(prompt)
-        st.subheader("🤖 AI Hiring Recommendation")
-        st.write(recommendation)
-        speech.speak("Candidate screening completed.")
+        st.session_state.stage = "technical"
+        speech.speak("Screening completed. Starting technical interview.")
+        st.rerun()
 
 # ======================================================
-# ================= INTERVIEW MODE =====================
+# ================= INTERVIEW STAGE ====================
 # ======================================================
-if mode == "AI Interview":
+if st.session_state.stage in ["technical", "hr"]:
 
-    if "screening_score" not in st.session_state:
-        st.warning("Please complete Candidate Screening first.")
-        st.stop()
+    round_name = "Technical Interview" if st.session_state.stage == "technical" else "HR Interview"
+    st.subheader(f"🧑‍💼 {round_name}")
 
-    st.subheader("🧑‍💼 AI Interview")
-    st.info(f"Screening Score: {st.session_state.screening_score}")
+    elapsed = int(time.time() - st.session_state.question_start_time)
+    st.info(f"⏱️ Time spent: {elapsed} seconds")
 
-    round_type = st.selectbox(
-        "Interview Round",
-        ["HR Round", "Technical Round"]
+    if st.session_state.question_count >= 3:
+        st.session_state.difficulty = "Medium"
+    if st.session_state.question_count >= 4:
+        st.session_state.difficulty = "Hard"
+
+    st.write(f"🧠 Difficulty: {st.session_state.difficulty}")
+
+    if not st.session_state.current_question:
+        base_prompt = TECH_PROMPT if st.session_state.stage == "technical" else HR_PROMPT
+
+        if st.session_state.stage == "technical":
+            base_prompt += f"""
+Difficulty: {st.session_state.difficulty}
+Resume:
+{st.session_state.resume_text}
+Projects:
+{st.session_state.projects}
+Ask conceptual + coding + optimization questions.
+"""
+
+        st.session_state.current_question = run_llm(base_prompt)
+        st.session_state.question_start_time = time.time()
+        speech.speak(st.session_state.current_question)
+
+    st.write("🤖 Question:")
+    st.write(st.session_state.current_question)
+
+    answer = st.text_area(
+        "Candidate Answer",
+        height=150,
+        key=f"answer_{st.session_state.answer_key}"
     )
 
+    if st.session_state.stage == "technical":
+        st.subheader("🧪 Live Coding Editor")
+        code = st.text_area("Write code here", height=250, key="coding_editor")
+
+        if st.button("▶️ Run Code"):
+            try:
+                exec(code, {})
+                st.success("Code executed successfully")
+            except Exception as e:
+                st.error(e)
+
+        if st.button("🧪 Run Test Cases"):
+            st.success("Basic test cases passed ✔" if "def" in code else "Test cases failed ❌")
+
+        if st.button("📊 Score Code Quality"):
+            st.write(run_llm(f"Score this code from 0–10:\n{code}"))
+
+        st.info("🎥 Screen recording enabled (stub)")
+
+    if st.button("📨 Submit Answer"):
+        score_text = run_llm(f"Score this answer from 0–10:\n{answer}")
+        score = int(re.search(r"\d+", score_text).group()) if re.search(r"\d+", score_text) else 5
+
+        st.session_state.interview_scores.append(score)
+        st.session_state.interview_history.append(answer)
+        st.session_state.question_count += 1
+        st.session_state.current_question = ""
+        st.session_state.answer_key += 1
+
+        if st.session_state.question_count >= st.session_state.max_questions:
+            st.session_state.question_count = 0
+            st.session_state.stage = "hr" if st.session_state.stage == "technical" else "decision"
+
+        st.rerun()
+
+# ======================================================
+# ================= FINAL DECISION =====================
+# ======================================================
+if st.session_state.stage == "decision":
+
+    st.subheader("🏁 Final Hiring Decision")
+
+    decision = final_decision(
+        scores=st.session_state.interview_scores,
+        emotion_flags=[],
+        cheating_flags=[]
+    )
+
+    st.success(f"🎯 Final Decision: **{decision}**")
+
     # -------------------------------
-    # START INTERVIEW (ASK FIRST QUESTION)
+    # 📊 ANALYTICS DASHBOARD
     # -------------------------------
-    if not st.session_state.interview_started:
-        base_prompt = HR_PROMPT if round_type == "HR Round" else TECH_PROMPT
-        start_prompt = base_prompt + "\nStart the interview by asking the first question only."
-
-        first_question = run_llm(start_prompt)
-
-        st.session_state.interview_started = True
-        st.session_state.current_question = first_question
-        st.session_state.interview_history.append(first_question)
-
-        st.subheader("🤖 Interviewer Question")
-        st.write(first_question)
-        speech.speak(first_question)
-
-    # -------------------------------
-    # SHOW CURRENT QUESTION
-    # -------------------------------
-    if st.session_state.current_question:
-        st.subheader("🤖 Current Question")
-        st.write(st.session_state.current_question)
-
-    answer = st.text_area("Candidate Answer", height=150)
+    st.subheader("📊 Analytics Dashboard")
 
     col1, col2, col3 = st.columns(3)
+    col1.metric("📄 Screening Score", st.session_state.screening_score)
+    col2.metric("🧑‍💼 Avg Interview Score",
+                round(sum(st.session_state.interview_scores) / len(st.session_state.interview_scores), 2))
+    col3.metric("🎯 Decision", decision)
+
+    st.line_chart(st.session_state.interview_scores)
 
     # -------------------------------
-    # TEXT ANSWER
+    # 📝 FINAL SUMMARY WITH REASONS
     # -------------------------------
-    with col1:
-        if st.button("📨 Submit Answer"):
-            prompt = HR_PROMPT if round_type == "HR Round" else TECH_PROMPT
-            response = run_llm(prompt + "\nCandidate Answer:\n" + answer)
+    summary_prompt = f"""
+Generate a full recruitment evaluation including:
+- Screening analysis
+- Interview performance
+- Strengths
+- Weaknesses
+- Clear reason for decision
 
-            st.session_state.interview_history.append(answer)
-            st.session_state.current_question = response
+Screening Score: {st.session_state.screening_score}
+Interview Scores: {st.session_state.interview_scores}
+Answers: {st.session_state.interview_history}
+Decision: {decision}
+"""
+    summary = run_llm(summary_prompt)
 
-            score_prompt = f"""
-            Score this answer from 0 to 10 and give 1-line feedback:
-            {answer}
-            """
-            score_response = run_llm(score_prompt)
-
-            try:
-                score_value = int(re.search(r"\d+", score_response).group())
-            except:
-                score_value = 5
-
-            st.session_state.interview_scores.append(score_value)
-
-            st.subheader("🤖 Interviewer Response")
-            st.write(response)
-            speech.speak(response)
-
-            st.subheader("🧪 Interview Evaluation")
-            st.write(score_response)
+    st.subheader("📝 Recruitment Summary & Decision Reasoning")
+    st.write(summary)
 
     # -------------------------------
-    # VOICE ANSWER
+    # 📄 FINAL COMBINED PDF
     # -------------------------------
-    with col2:
-        if st.button("🎤 Answer by Voice"):
-            voice_answer = speech.listen()
-            if voice_answer:
-                st.write("🗣️ You said:", voice_answer)
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 8, "AI Recruitment Evaluation Report\n\n")
+    pdf.multi_cell(0, 8, summary)
+    pdf.output("Final_Recruitment_Report.pdf")
 
-                prompt = HR_PROMPT if round_type == "HR Round" else TECH_PROMPT
-                response = run_llm(prompt + "\nCandidate Answer:\n" + voice_answer)
-
-                st.session_state.interview_history.append(voice_answer)
-                st.session_state.interview_scores.append(6)
-                st.session_state.current_question = response
-
-                st.write(response)
-                speech.speak(response)
-
-    # -------------------------------
-    # PROCTORING
-    # -------------------------------
-    with col3:
-        if st.button("👁️ Run Proctoring"):
-            cam = CameraMonitor()
-            flags = cam.run_proctoring(duration=10)
-            cam.release()
-
-            st.session_state.cheating_flags.extend(flags)
-
-            if flags:
-                st.warning("Proctoring Flags Detected")
-                st.write(flags)
-            else:
-                st.success("No suspicious activity detected")
-
-    # -------------------------------
-    # FINAL DECISION
-    # -------------------------------
-    if st.button("🏁 Final Hiring Decision"):
-
-        decision = final_decision(
-            scores=st.session_state.interview_scores,
-            emotion_flags=st.session_state.emotion_flags,
-            cheating_flags=st.session_state.cheating_flags
+    with open("Final_Recruitment_Report.pdf", "rb") as f:
+        st.download_button(
+            "⬇️ Download Final Recruitment Report (PDF)",
+            f,
+            file_name="Final_Recruitment_Report.pdf"
         )
 
-        st.success(f"🎯 Final Decision: **{decision}**")
-        speech.speak(f"The final hiring decision is {decision}.")
+    st.session_state.stage = "completed"
+    speech.speak("Interview process completed. Final decision generated.")

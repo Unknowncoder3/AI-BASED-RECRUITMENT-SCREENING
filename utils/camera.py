@@ -11,27 +11,21 @@ class CameraMonitor:
         self.flags = []
 
         # -----------------------------
-        # Robust Haar Cascade Loading
+        # Load Haar Cascade (Vendored)
         # -----------------------------
-        cascade_path = None
+        cascade_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "models",
+            "haarcascade_frontalface_default.xml"
+        )
 
-        # Case 1: Standard OpenCV build
-        if hasattr(cv2, "data"):
-            cascade_path = os.path.join(
-                cv2.data.haarcascades,
-                "haarcascade_frontalface_default.xml"
-            )
-        else:
-            # Case 2: macOS / conda / custom build
-            cascade_path = cv2.__file__.replace(
-                "__init__.py",
-                "data/haarcascade_frontalface_default.xml"
-            )
+        cascade_path = os.path.abspath(cascade_path)
 
         if not os.path.exists(cascade_path):
             raise RuntimeError(
-                "Haar cascade file not found. "
-                "Please reinstall opencv-python."
+                f"Haar cascade file not found at {cascade_path}.\n"
+                "Make sure models/haarcascade_frontalface_default.xml exists."
             )
 
         self.face_cascade = cv2.CascadeClassifier(cascade_path)
@@ -69,7 +63,7 @@ class CameraMonitor:
 
             time.sleep(1)
 
-        return list(set(self.flags))  # remove duplicates
+        return list(set(self.flags))
 
     # -----------------------------
     # Release camera
