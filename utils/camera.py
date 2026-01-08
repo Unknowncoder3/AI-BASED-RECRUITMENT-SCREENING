@@ -2,15 +2,39 @@
 
 import cv2
 import time
+import os
 
 
 class CameraMonitor:
     def __init__(self):
         self.cap = cv2.VideoCapture(0)
-        self.face_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-        )
         self.flags = []
+
+        # -----------------------------
+        # Robust Haar Cascade Loading
+        # -----------------------------
+        cascade_path = None
+
+        # Case 1: Standard OpenCV build
+        if hasattr(cv2, "data"):
+            cascade_path = os.path.join(
+                cv2.data.haarcascades,
+                "haarcascade_frontalface_default.xml"
+            )
+        else:
+            # Case 2: macOS / conda / custom build
+            cascade_path = cv2.__file__.replace(
+                "__init__.py",
+                "data/haarcascade_frontalface_default.xml"
+            )
+
+        if not os.path.exists(cascade_path):
+            raise RuntimeError(
+                "Haar cascade file not found. "
+                "Please reinstall opencv-python."
+            )
+
+        self.face_cascade = cv2.CascadeClassifier(cascade_path)
 
     # -----------------------------
     # Detect faces in a frame
@@ -18,7 +42,9 @@ class CameraMonitor:
     def _detect_faces(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(
-            gray, scaleFactor=1.3, minNeighbors=5
+            gray,
+            scaleFactor=1.3,
+            minNeighbors=5
         )
         return faces
 
@@ -38,13 +64,12 @@ class CameraMonitor:
 
             if len(faces) == 0:
                 self.flags.append("No face detected")
-
             elif len(faces) > 1:
                 self.flags.append("Multiple faces detected")
 
             time.sleep(1)
 
-        return self.flags
+        return list(set(self.flags))  # remove duplicates
 
     # -----------------------------
     # Release camera
