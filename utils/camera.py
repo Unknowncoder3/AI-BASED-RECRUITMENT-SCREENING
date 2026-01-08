@@ -1,73 +1,33 @@
-# utils/camera.py
-
 import cv2
-import time
-import os
-
 
 class CameraMonitor:
-    def __init__(self):
-        self.cap = cv2.VideoCapture(0)
-        self.flags = []
+    def __init__(self, camera_index=0):
+        self.cap = cv2.VideoCapture(camera_index)
 
-        # -----------------------------
-        # Load Haar Cascade (Vendored)
-        # -----------------------------
-        cascade_path = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "models",
-            "haarcascade_frontalface_default.xml"
-        )
+        if not self.cap.isOpened():
+            raise RuntimeError("❌ Could not access the camera")
 
-        cascade_path = os.path.abspath(cascade_path)
+    def get_frame(self):
+        """
+        Capture a single frame for live preview in Streamlit
+        """
+        ret, frame = self.cap.read()
+        if not ret:
+            return None
+        return frame
 
-        if not os.path.exists(cascade_path):
-            raise RuntimeError(
-                f"Haar cascade file not found at {cascade_path}.\n"
-                "Make sure models/haarcascade_frontalface_default.xml exists."
-            )
-
-        self.face_cascade = cv2.CascadeClassifier(cascade_path)
-
-    # -----------------------------
-    # Detect faces in a frame
-    # -----------------------------
-    def _detect_faces(self, frame):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = self.face_cascade.detectMultiScale(
-            gray,
-            scaleFactor=1.3,
-            minNeighbors=5
-        )
-        return faces
-
-    # -----------------------------
-    # Run proctoring for N seconds
-    # -----------------------------
-    def run_proctoring(self, duration: int = 10):
-        start_time = time.time()
-
-        while time.time() - start_time < duration:
+    def run_proctoring(self, duration=10):
+        """
+        Placeholder for future cheating / gaze detection.
+        Currently just captures frames.
+        """
+        flags = []
+        for _ in range(duration):
             ret, frame = self.cap.read()
             if not ret:
-                self.flags.append("Camera frame not available")
-                continue
+                flags.append("Camera frame not captured")
+        return flags
 
-            faces = self._detect_faces(frame)
-
-            if len(faces) == 0:
-                self.flags.append("No face detected")
-            elif len(faces) > 1:
-                self.flags.append("Multiple faces detected")
-
-            time.sleep(1)
-
-        return list(set(self.flags))
-
-    # -----------------------------
-    # Release camera
-    # -----------------------------
     def release(self):
-        if self.cap.isOpened():
+        if self.cap:
             self.cap.release()
