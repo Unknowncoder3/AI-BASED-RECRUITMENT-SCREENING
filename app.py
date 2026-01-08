@@ -29,7 +29,7 @@ def fast_llm(prompt: str):
     return run_llm(prompt)
 
 # -------------------------------
-# SPEAK AFTER RENDER (FIX TTS)
+# SPEAK AFTER RENDER
 # -------------------------------
 def speak_after_render(text):
     st.session_state["_speak_text"] = text
@@ -48,6 +48,12 @@ if "max_questions" not in st.session_state:
 
 if "difficulty" not in st.session_state:
     st.session_state.difficulty = "Easy"
+
+if "announcement_done" not in st.session_state:
+    st.session_state.announcement_done = False
+
+if "screening_failed" not in st.session_state:
+    st.session_state.screening_failed = False
 
 # -------------------------------
 # INTERVIEW STATE
@@ -80,7 +86,7 @@ def structured_technical_prompt(resume, projects, difficulty, q_index):
         "Computer Networks",
         "Coding and optimization"
     ]
-    topic = topics[min(q_index, len(topics)-1)]
+    topic = topics[min(q_index, len(topics) - 1)]
     return f"""
 Ask ONE interview question.
 
@@ -100,19 +106,34 @@ If Coding:
 Ask ONLY the question.
 """
 
-def evaluate_answer_fast(answer):
-    prompt = f"""
-Evaluate the interview answer.
+def next_hr_question(history, q_index):
+    return fast_llm(f"""
+You are an HR interviewer.
 
-Return JSON with:
-technical_score (0-10),
-communication_score (0-10),
+Previous questions and answers:
+{history}
+
+Rules:
+- DO NOT repeat questions
+- Ask a NEW HR question
+- Focus on behavior, teamwork, ethics, conflict, leadership
+
+This is HR question {q_index + 1}.
+Ask ONLY ONE question.
+""")
+
+def evaluate_answer_fast(answer):
+    return fast_llm(f"""
+Evaluate interview answer.
+
+Return:
+technical_score (0-10)
+communication_score (0-10)
 nervousness (LOW/MODERATE/HIGH)
 
 Answer:
 {answer}
-"""
-    return fast_llm(prompt)
+""")
 
 # -------------------------------
 # UI CONFIG
@@ -142,18 +163,44 @@ if st.session_state.stage == "screening":
             analyze_github(github)["score"],
             analyze_academics(tenth, twelfth, cgpa)["score"]
         )
+
         st.session_state.resume_text = resume_text
         st.session_state.projects = projects.split("\n")
-        st.session_state.stage = "technical"
-        speak_after_render("Screening completed. Interview starting.")
+
+        if st.session_state.screening_score < 60:
+            st.session_state.screening_failed = True
+            st.session_state.stage = "decision"
+            speak_after_render(
+                "Unfortunately, your screening score is below the cutoff. "
+                "You will not proceed to the interview rounds."
+            )
+            st.rerun()
+
+        st.session_state.stage = "hr"
+        st.session_state.announcement_done = False
+        speak_after_render("Screening cleared. Interview process will begin.")
         st.rerun()
 
 # ======================================================
 # INTERVIEW
 # ======================================================
-if st.session_state.stage in ["technical", "hr"]:
+if st.session_state.stage in ["hr", "technical"]:
 
-    # 📷 Camera preview
+    # 📢 ANNOUNCEMENT
+    if not st.session_state.announcement_done:
+        if st.session_state.stage == "hr":
+            st.subheader("📢 Interview Announcement")
+            st.info("Your HR interview will begin now.")
+            speak_after_render("Your HR interview will begin now.")
+        else:
+            st.subheader("📢 Interview Announcement")
+            st.info("Your technical interview will begin now.")
+            speak_after_render("Your technical interview will begin now.")
+
+        st.session_state.announcement_done = True
+        st.stop()
+
+    # 📷 Camera
     with st.sidebar:
         st.subheader("📷 Live Camera")
         cam = CameraMonitor()
@@ -165,16 +212,15 @@ if st.session_state.stage in ["technical", "hr"]:
 
     # INTRO
     if not st.session_state.intro_done:
-        st.subheader("👋 Introduction")
-        intro_q = "Tell me about yourself. Focus on what is NOT written in your resume."
-        st.write(intro_q)
-        speak_after_render(intro_q)
+        q = "Tell me about yourself. Focus on what is NOT written in your resume."
+        st.write(q)
+        speak_after_render(q)
 
-        intro_ans = st.text_area("Your Answer", height=150)
+        ans = st.text_area("Your Answer", height=150)
         if st.button("Continue"):
-            st.session_state.intro_answer = intro_ans
-            st.session_state.interview_history.append(f"INTRO: {intro_ans}")
             st.session_state.intro_done = True
+            st.session_state.intro_answer = ans
+            st.session_state.interview_history.append(f"INTRO: {ans}")
             st.rerun()
         st.stop()
 
@@ -184,13 +230,17 @@ if st.session_state.stage in ["technical", "hr"]:
         st.session_state.difficulty = "Hard"
 
     st.subheader(
-        "🧑‍💼 Technical Interview"
-        if st.session_state.stage == "technical"
-        else "🧑‍💼 HR Interview"
+        "🧑‍💼 HR Interview" if st.session_state.stage == "hr"
+        else "🧑‍💼 Technical Interview"
     )
 
     if not st.session_state.current_question:
-        if st.session_state.stage == "technical":
+        if st.session_state.stage == "hr":
+            st.session_state.current_question = next_hr_question(
+                st.session_state.interview_history,
+                st.session_state.question_count
+            )
+        else:
             st.session_state.current_question = fast_llm(
                 structured_technical_prompt(
                     st.session_state.resume_text,
@@ -199,8 +249,6 @@ if st.session_state.stage in ["technical", "hr"]:
                     st.session_state.question_count
                 )
             )
-        else:
-            st.session_state.current_question = fast_llm(HR_PROMPT)
 
         speak_after_render(st.session_state.current_question)
         st.session_state.question_start_time = time.time()
@@ -208,23 +256,22 @@ if st.session_state.stage in ["technical", "hr"]:
     st.write("🤖 Question:")
     st.write(st.session_state.current_question)
 
-    # 🎤 Voice input
     if st.button("🎙️ Answer by Voice"):
         answer = speech.listen(timeout=10, phrase_time_limit=25)
         st.success(f"You said: {answer}")
     else:
-        answer = st.text_area(
-            "Answer",
-            height=150,
-            key=f"answer_{st.session_state.answer_key}"
-        )
+        answer = st.text_area("Answer", height=150, key=f"answer_{st.session_state.answer_key}")
 
     if st.button("Submit Answer"):
         eval_resp = evaluate_answer_fast(answer)
 
-        tech = int(re.search(r"technical_score.*?(\d+)", eval_resp, re.I).group(1))
-        comm = int(re.search(r"communication_score.*?(\d+)", eval_resp, re.I).group(1))
-        nerv = re.search(r"(LOW|MODERATE|HIGH)", eval_resp, re.I).group(1)
+        tech_match = re.search(r"technical_score.*?(\d+)", eval_resp, re.I)
+        comm_match = re.search(r"communication_score.*?(\d+)", eval_resp, re.I)
+        nerv_match = re.search(r"(LOW|MODERATE|HIGH)", eval_resp, re.I)
+
+        tech = int(tech_match.group(1)) if tech_match else 5
+        comm = int(comm_match.group(1)) if comm_match else 5
+        nerv = nerv_match.group(1) if nerv_match else "MODERATE"
 
         st.session_state.interview_scores.append(tech)
         st.session_state.emotion_flags.append(nerv)
@@ -243,8 +290,12 @@ if st.session_state.stage in ["technical", "hr"]:
         st.session_state.question_count += 1
 
         if st.session_state.question_count >= st.session_state.max_questions:
-            st.session_state.stage = "hr" if st.session_state.stage == "technical" else "decision"
             st.session_state.question_count = 0
+            if st.session_state.stage == "hr":
+                st.session_state.stage = "technical"
+                st.session_state.announcement_done = False
+            else:
+                st.session_state.stage = "decision"
 
         st.rerun()
 
@@ -252,6 +303,10 @@ if st.session_state.stage in ["technical", "hr"]:
 # FINAL DECISION
 # ======================================================
 if st.session_state.stage == "decision":
+
+    if st.session_state.screening_failed:
+        st.error("❌ Candidate failed screening round.")
+        st.write("Reason: Screening score below cutoff (60).")
 
     decision = final_decision(
         scores=st.session_state.interview_scores,
@@ -262,10 +317,11 @@ if st.session_state.stage == "decision":
     st.success(f"🎯 Final Decision: {decision}")
 
     st.subheader("📊 Analytics")
-    st.line_chart(st.session_state.interview_scores)
+    if st.session_state.interview_scores:
+        st.line_chart(st.session_state.interview_scores)
 
     summary = fast_llm(f"""
-Evaluate the candidate holistically.
+Evaluate candidate holistically.
 
 Intro:
 {st.session_state.intro_answer}
