@@ -22,6 +22,19 @@ from utils.speech import SpeechEngine
 from utils.camera import CameraMonitor
 
 # -------------------------------
+# ⚡ FAST LLM (CACHE)
+# -------------------------------
+@st.cache_data(show_spinner=False)
+def fast_llm(prompt: str):
+    return run_llm(prompt)
+
+# -------------------------------
+# SPEAK AFTER RENDER (FIX TTS)
+# -------------------------------
+def speak_after_render(text):
+    st.session_state["_speak_text"] = text
+
+# -------------------------------
 # PIPELINE STATE
 # -------------------------------
 if "stage" not in st.session_state:
@@ -56,7 +69,7 @@ for key, default in {
 speech = SpeechEngine()
 
 # -------------------------------
-# HELPERS (NEW)
+# HELPERS
 # -------------------------------
 def structured_technical_prompt(resume, projects, difficulty, q_index):
     topics = [
@@ -70,6 +83,7 @@ def structured_technical_prompt(resume, projects, difficulty, q_index):
     topic = topics[min(q_index, len(topics)-1)]
     return f"""
 Ask ONE interview question.
+
 Topic: {topic}
 Difficulty: {difficulty}
 
@@ -86,17 +100,19 @@ If Coding:
 Ask ONLY the question.
 """
 
-def communication_score(answer):
-    resp = run_llm(
-        f"Score communication (clarity, confidence, structure) 0-10:\n{answer}"
-    )
-    m = re.search(r"\d+", resp)
-    return int(m.group()) if m else 5
+def evaluate_answer_fast(answer):
+    prompt = f"""
+Evaluate the interview answer.
 
-def detect_nervousness(answer):
-    return run_llm(
-        f"Detect nervousness level (LOW/MODERATE/HIGH):\n{answer}"
-    ).strip()
+Return JSON with:
+technical_score (0-10),
+communication_score (0-10),
+nervousness (LOW/MODERATE/HIGH)
+
+Answer:
+{answer}
+"""
+    return fast_llm(prompt)
 
 # -------------------------------
 # UI CONFIG
@@ -129,7 +145,7 @@ if st.session_state.stage == "screening":
         st.session_state.resume_text = resume_text
         st.session_state.projects = projects.split("\n")
         st.session_state.stage = "technical"
-        speech.speak("Screening completed. Interview starting.")
+        speak_after_render("Screening completed. Interview starting.")
         st.rerun()
 
 # ======================================================
@@ -147,12 +163,12 @@ if st.session_state.stage in ["technical", "hr"]:
         if st.button("Stop Camera"):
             cam.release()
 
-    # INTRO QUESTION
+    # INTRO
     if not st.session_state.intro_done:
         st.subheader("👋 Introduction")
-        q = "Tell me about yourself. Focus on what is NOT written in your resume."
-        st.write(q)
-        speech.speak(q)
+        intro_q = "Tell me about yourself. Focus on what is NOT written in your resume."
+        st.write(intro_q)
+        speak_after_render(intro_q)
 
         intro_ans = st.text_area("Your Answer", height=150)
         if st.button("Continue"):
@@ -162,7 +178,6 @@ if st.session_state.stage in ["technical", "hr"]:
             st.rerun()
         st.stop()
 
-    # Difficulty progression
     if st.session_state.question_count >= 3:
         st.session_state.difficulty = "Medium"
     if st.session_state.question_count >= 5:
@@ -176,7 +191,7 @@ if st.session_state.stage in ["technical", "hr"]:
 
     if not st.session_state.current_question:
         if st.session_state.stage == "technical":
-            st.session_state.current_question = run_llm(
+            st.session_state.current_question = fast_llm(
                 structured_technical_prompt(
                     st.session_state.resume_text,
                     st.session_state.projects,
@@ -185,9 +200,9 @@ if st.session_state.stage in ["technical", "hr"]:
                 )
             )
         else:
-            st.session_state.current_question = run_llm(HR_PROMPT)
+            st.session_state.current_question = fast_llm(HR_PROMPT)
 
-        speech.speak(st.session_state.current_question)
+        speak_after_render(st.session_state.current_question)
         st.session_state.question_start_time = time.time()
 
     st.write("🤖 Question:")
@@ -195,9 +210,8 @@ if st.session_state.stage in ["technical", "hr"]:
 
     # 🎤 Voice input
     if st.button("🎙️ Answer by Voice"):
-        voice_ans = speech.listen()
-        st.success(f"You said: {voice_ans}")
-        answer = voice_ans
+        answer = speech.listen(timeout=10, phrase_time_limit=25)
+        st.success(f"You said: {answer}")
     else:
         answer = st.text_area(
             "Answer",
@@ -206,20 +220,20 @@ if st.session_state.stage in ["technical", "hr"]:
         )
 
     if st.button("Submit Answer"):
-        tech_score = int(
-            re.search(r"\d+", run_llm(f"Score this answer 0-10:\n{answer}")).group()
-        )
-        comm = communication_score(answer)
-        nerv = detect_nervousness(answer)
+        eval_resp = evaluate_answer_fast(answer)
 
-        st.session_state.interview_scores.append(tech_score)
-        st.session_state.interview_history.append(answer)
+        tech = int(re.search(r"technical_score.*?(\d+)", eval_resp, re.I).group(1))
+        comm = int(re.search(r"communication_score.*?(\d+)", eval_resp, re.I).group(1))
+        nerv = re.search(r"(LOW|MODERATE|HIGH)", eval_resp, re.I).group(1)
+
+        st.session_state.interview_scores.append(tech)
         st.session_state.emotion_flags.append(nerv)
+        st.session_state.interview_history.append(answer)
 
         st.session_state.replay_log.append({
             "question": st.session_state.current_question,
             "answer": answer,
-            "technical": tech_score,
+            "technical": tech,
             "communication": comm,
             "nervousness": nerv
         })
@@ -235,7 +249,7 @@ if st.session_state.stage in ["technical", "hr"]:
         st.rerun()
 
 # ======================================================
-# FINAL DECISION + ANALYTICS + REPLAY
+# FINAL DECISION
 # ======================================================
 if st.session_state.stage == "decision":
 
@@ -250,13 +264,8 @@ if st.session_state.stage == "decision":
     st.subheader("📊 Analytics")
     st.line_chart(st.session_state.interview_scores)
 
-    summary = run_llm(f"""
-Evaluate the candidate based on:
-- Introduction
-- Core CS answers
-- Coding performance
-- Communication
-- Nervousness
+    summary = fast_llm(f"""
+Evaluate the candidate holistically.
 
 Intro:
 {st.session_state.intro_answer}
@@ -264,7 +273,8 @@ Intro:
 Answers:
 {st.session_state.interview_history}
 
-Decision: {decision}
+Decision:
+{decision}
 """)
 
     st.subheader("📝 Final Recruitment Summary")
@@ -288,4 +298,11 @@ Decision: {decision}
             file_name="Final_Recruitment_Report.pdf"
         )
 
-    speech.speak("Interview completed. Final decision generated.")
+    speak_after_render("Interview completed. Final decision generated.")
+
+# -------------------------------
+# 🔊 SPEAK AFTER RENDER EXECUTOR
+# -------------------------------
+if "_speak_text" in st.session_state:
+    speech.speak(st.session_state["_speak_text"])
+    del st.session_state["_speak_text"]

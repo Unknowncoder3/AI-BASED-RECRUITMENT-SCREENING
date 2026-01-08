@@ -3,7 +3,7 @@ import json
 import shlex
 
 
-def run_llm(prompt: str, model: str = "llama3", timeout: int = 30) -> str:
+def run_llm(prompt: str, model: str = "mistral", timeout: int = 30) -> str:
     """
     Run Ollama LLM safely with timeout.
     Prevents Streamlit from hanging forever.
