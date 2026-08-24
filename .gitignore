@@ -1,0 +1,17 @@
+.DS_Store
+._*
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
