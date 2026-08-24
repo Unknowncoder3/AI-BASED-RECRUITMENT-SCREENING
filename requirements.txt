@@ -3,6 +3,9 @@ streamlit>=1.32.0
 
 # LLM & AI
 langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-core>=0.2.0
+langchain-ollama>=0.1.0
 faiss-cpu>=1.8.0
 
 # Resume / Text Processing
@@ -17,9 +20,10 @@ pandas>=2.2.0
 # GitHub API
 requests>=2.31.0
 
-# Visualization (optional but useful)
+# Visualization
 plotly>=5.20.0
 
 # Development utilities
 python-dotenv>=1.0.1
-beautifulsoup4
+beautifulsoup4>=4.12.0
+pytest>=8.0.0
