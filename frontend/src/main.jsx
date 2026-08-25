@@ -38,31 +38,49 @@ function CandidateScreening({ onDone }) {
   const [form, setForm] = useState({ job_description: "Data Scientist — Python, SQL, machine learning, pandas, scikit-learn", github_username: "", tenth: "", twelfth: "", cgpa: "", projects: "", resume_text: "" });
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
   const update = (key, value) => setForm(f => ({...f, [key]: value}));
 
+  async function uploadResume(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name); setError(""); setExtracting(true);
+    try {
+      const body = new FormData(); body.append("file", file);
+      const response = await fetch(`${API_BASE}/api/v1/resume/extract`, { method: "POST", body });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Resume extraction failed");
+      update("resume_text", data.text);
+    } catch (err) { setError(err.message); }
+    finally { setExtracting(false); }
+  }
+
   async function screen() {
-    setLoading(true);
+    setLoading(true); setError("");
     try {
       const payload = {...form, projects: form.projects ? form.projects.split("\n").filter(Boolean) : [], tenth: Number(form.tenth || 0), twelfth: Number(form.twelfth || 0), cgpa: Number(form.cgpa || 0)};
       const response = await fetch(`${API_BASE}/api/v1/screen`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
-      if (!response.ok) throw new Error("API unavailable");
-      setResult(await response.json());
-    } catch { setResult({error: "Backend unavailable. Start FastAPI on port 8000 to run live screening."}); }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Screening failed");
+      setResult(data);
+    } catch (err) { setError(err.message || "Backend unavailable. Start FastAPI on port 8000."); }
     finally { setLoading(false); }
   }
 
   return <section className="screening-layout">
     <div className="panel form-panel"><div className="section-title"><div><p className="eyebrow">Candidate intake</p><h2>Screen a candidate</h2><p>Provide evidence, then let the screening engine build an explainable profile.</p></div><button className="ghost" onClick={onDone}>← Dashboard</button></div>
       <label>Target job description<textarea value={form.job_description} onChange={e => update("job_description", e.target.value)} /></label>
+      <label>Resume PDF<input type="file" accept="application/pdf,.pdf" onChange={uploadResume} disabled={extracting} /><small>{extracting ? "Extracting resume text…" : fileName || "PDF is processed in memory and is not persisted."}</small></label>
       <label>Resume text<textarea placeholder="Paste extracted resume text here..." value={form.resume_text} onChange={e => update("resume_text", e.target.value)} /></label>
-      <label>Resume PDF<input type="file" accept=".pdf" onChange={e => setFileName(e.target.files?.[0]?.name || "")} /><small>{fileName || "PDF upload UI — connect parser endpoint for production extraction."}</small></label>
       <div className="two-col"><label>GitHub username<input value={form.github_username} onChange={e => update("github_username", e.target.value)} placeholder="octocat" /></label><label>CGPA<input type="number" min="0" max="10" step="0.01" value={form.cgpa} onChange={e => update("cgpa", e.target.value)} placeholder="8.5" /></label></div>
       <div className="two-col"><label>10th %<input type="number" min="0" max="100" value={form.tenth} onChange={e => update("tenth", e.target.value)} /></label><label>12th %<input type="number" min="0" max="100" value={form.twelfth} onChange={e => update("twelfth", e.target.value)} /></label></div>
       <label>Projects <textarea placeholder="One project per line" value={form.projects} onChange={e => update("projects", e.target.value)} /></label>
-      <button className="primary full" onClick={screen} disabled={loading}>{loading ? "Running AI screening…" : "Run AI Screening →"}</button>
+      {error && <div className="error-box">{error}</div>}
+      <button className="primary full" onClick={screen} disabled={loading || extracting}>{loading ? "Running AI screening…" : "Run AI Screening →"}</button>
     </div>
-    <div className="panel results-panel"><p className="eyebrow">Explainable output</p><h3>Screening result</h3>{!result && <div className="result-placeholder"><div className="empty-icon">AI</div><p>Your score breakdown, evidence and human-review recommendation will appear here.</p></div>}{result?.error && <div className="error-box">{result.error}</div>}{result && !result.error && <><div className="result-score"><ScoreRing value={Math.round(result.screening_score || 0)} /><div><span>Overall screening score</span><strong>{result.human_review_required ? "Human review required" : "Review complete"}</strong></div></div><div className="breakdown">{Object.entries(result.breakdown || {}).filter(([k]) => k !== "total").map(([key,value]) => <div key={key}><span>{key.replaceAll("_", " ")}</span><strong>{value}</strong></div>)}</div><div className="evidence"><h4>Evidence summary</h4><p>{result.resume?.summary || "Resume evidence processed."}</p><p>{result.github?.summary || "GitHub evidence processed."}</p><p>{result.projects?.summary || "Project evidence processed."}</p></div></>}</div>
+    <div className="panel results-panel"><p className="eyebrow">Explainable output</p><h3>Screening result</h3>{!result && <div className="result-placeholder"><div className="empty-icon">AI</div><p>Your score breakdown, evidence and human-review recommendation will appear here.</p></div>}{result && <><div className="result-score"><ScoreRing value={Math.round(result.screening_score || 0)} /><div><span>Overall screening score</span><strong>Human review required</strong></div></div><div className="breakdown">{Object.entries(result.breakdown || {}).filter(([k]) => k !== "total" && !k.endsWith("_contribution")).map(([key,value]) => <div key={key}><span>{key.replaceAll("_", " ")}</span><strong>{value}</strong></div>)}</div><div className="evidence"><h4>Evidence summary</h4><p>{result.resume?.summary || "Resume evidence processed."}</p><p>{result.github?.summary || "GitHub evidence processed."}</p><p>{result.projects?.summary || "Project evidence processed."}</p></div>{result.resume?.missing_skills?.length > 0 && <div className="evidence"><h4>Missing skills</h4><div className="tags">{result.resume.missing_skills.map(s => <i key={s}>{s}</i>)}</div></div>}</>}</div>
   </section>;
 }
 
