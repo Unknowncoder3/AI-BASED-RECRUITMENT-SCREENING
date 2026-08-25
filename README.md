@@ -23,13 +23,17 @@ CandidateIQ is a portfolio-grade recruitment intelligence prototype that helps a
 
 ## 🖥️ Product screenshots
 
-### Candidate profile & intake
+### Candidate profile & interview journey
 
-> Screenshots show the live CandidateIQ candidate-practice workflow, including structured profile inputs, resume upload, project evidence and recruiter-oriented interview navigation.
+The live CandidateIQ interface uses a structured interview journey with profile, AI screening, behavioral, motivation, technical, coding, HR and report stages.
 
-![CandidateIQ — interview journey and candidate profile](screenshots/candidate-profile.png)
+![CandidateIQ — live interview journey](https://image.thum.io/get/width/1400/crop/900/https://candidateiq-recruitment.netlify.app/)
 
-![CandidateIQ — candidate intake form](screenshots/candidate-intake.png)
+### Candidate intake workflow
+
+The candidate intake experience captures role, academic information, GitHub, resume, projects and resume text before assessment begins.
+
+![CandidateIQ — live candidate intake](https://image.thum.io/get/width/1400/crop/1200/https://candidateiq-recruitment.netlify.app/)
 
 ## 🌐 Live application
 
@@ -37,7 +41,7 @@ CandidateIQ is a portfolio-grade recruitment intelligence prototype that helps a
 
 👉 https://candidateiq-recruitment.netlify.app/
 
-The live application demonstrates the candidate practice flow and the recruiter-oriented interview workspace. Backend-dependent features may require the configured deployment environment.
+The live application demonstrates the candidate practice flow and recruiter-oriented interview workspace. Backend-dependent features may require the configured deployment environment.
 
 ## 🏗️ Architecture
 
@@ -134,9 +138,7 @@ AI-BASED-RECRUITMENT-SCREENING/
 ├── llm/
 ├── scoring/
 ├── tests/
-├── screenshots/
-│   ├── candidate-profile.png
-│   └── candidate-intake.png
+├── screenshots/              # optional local screenshots for repository documentation
 ├── .github/workflows/ci.yml
 ├── requirements.txt
 └── README.md
