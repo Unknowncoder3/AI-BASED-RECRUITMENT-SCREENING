@@ -1,48 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+/* CandidateIQ visual overrides — kept intentionally minimal.
+   The application uses a theme-token system in CandidateIQApp.jsx and the
+   dashboard styles in styles.css. Avoid global main/input/label overrides
+   here because they can override the dark/light theme tokens. */
 
-:root{font-family:Inter,system-ui,sans-serif;color:#172033;background:#f4f7fb;font-synthesis:none;text-rendering:optimizeLegibility}
-*{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;min-width:320px;background:radial-gradient(circle at 15% 0%,#eef0ff 0,transparent 28%),radial-gradient(circle at 95% 15%,#e9fbf7 0,transparent 22%),#f5f7fb;color:#172033}
+body{margin:0;min-width:320px;font-synthesis:none;text-rendering:optimizeLegibility}
 button,input,select,textarea{font-family:inherit}
 button{transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
 button:hover:not(:disabled){transform:translateY(-1px)}
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #765ff033;outline-offset:1px}
-
-/* Existing inline UI — premium global treatment */
-header{backdrop-filter:blur(18px);box-shadow:0 1px 0 rgba(20,30,55,.05),0 8px 28px rgba(20,30,55,.04)!important}
-header b{font-family:'Space Grotesk',sans-serif!important;letter-spacing:-.02em}
-header button{font-size:13px!important;padding:10px 15px!important;border-radius:12px!important}
-main{max-width:1180px!important;padding:42px 24px 90px!important}
-main>div>h1{font-family:'Space Grotesk',sans-serif!important;letter-spacing:-.04em!important;color:#151c2c!important}
-main>div>p{line-height:1.7!important}
-main label{color:#273044!important;font-size:13px!important;font-weight:600!important}
-main input:not([type=file]),main select,main textarea{background:#fff!important;color:#172033!important;border:1px solid #d9dfeb!important;box-shadow:0 1px 2px rgba(16,24,40,.02)!important;border-radius:12px!important;transition:border-color .18s,box-shadow .18s,background .18s!important}
-main input:not([type=file]):focus,main select:focus,main textarea:focus{border-color:#765ff0!important;box-shadow:0 0 0 4px #765ff014,0 4px 14px rgba(35,40,80,.05)!important}
-main textarea{line-height:1.55!important;resize:vertical!important}
-main input[type=file]{padding:13px!important;background:#fafbff!important;border:1px dashed #c7cce0!important;border-radius:12px!important;color:#556176!important}
-main button{font-weight:700!important;border-radius:12px!important}
-main button:not([disabled]){box-shadow:0 8px 18px rgba(91,75,219,.15)}
-
-/* Cards: create depth without changing the application logic */
-main>div>div[style*='background: rgb(255, 255, 255)'],main>div>div[style*='background: #fff']{border-color:#e2e6f0!important;box-shadow:0 18px 55px rgba(31,41,68,.07)!important}
-
-/* Candidate landing form */
-main>div>div[style*='grid-template-columns: repeat(2']{gap:22px!important}
-main>div>div[style*='grid-template-columns: repeat(2']>label{padding:0 2px}
-main>div>div[style*='grid-template-columns: repeat(2'] select,main>div>div[style*='grid-template-columns: repeat(2'] input{margin-top:8px!important;min-height:48px!important}
-main>div>div[style*='background: rgb(255, 255, 255)']{border-radius:20px!important}
-
-/* Primary buttons */
-main button:not([disabled]):not([style*='background: rgb(255, 255, 255)']){background:linear-gradient(135deg,#6954e8,#4f3bc7)!important;color:#fff!important;border:0!important}
-main button[disabled]{opacity:.55!important}
-
-/* Tags */
-main span[style*='border-radius: 999px']{letter-spacing:.02em!important;text-transform:none!important}
-
-/* Readiness score */
-main div[style*='conic-gradient']{box-shadow:0 12px 30px rgba(91,75,219,.18)!important}
-
-/* Responsive */
-@media(max-width:900px){main{padding:30px 16px 60px!important}main>div>div[style*='grid-template-columns: repeat(2']{grid-template-columns:1fr!important}main>div>div[style*='grid-template-columns: 1fr 1fr']{grid-template-columns:1fr!important}header{padding:0 16px!important}header>div:last-child{display:flex;gap:5px}header button{font-size:11px!important;padding:9px 10px!important}}
-@media(max-width:560px){header{height:auto!important;min-height:68px;padding:10px 12px!important}header b{font-size:17px!important}header b span{padding:6px!important}header button{font-size:10px!important;padding:8px!important}main{padding:24px 12px 50px!important}main>div>h1{font-size:32px!important;line-height:1.08!important}main>div>p{font-size:14px!important}main>div>div[style*='grid-template-columns: repeat(3']{grid-template-columns:1fr!important}}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(128,101,255,.28);outline-offset:2px}
