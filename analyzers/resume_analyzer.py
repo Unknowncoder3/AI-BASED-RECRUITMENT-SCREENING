@@ -1,109 +1,62 @@
 import re
 from typing import Dict, List
 
-# -------------------------------------------------
-# Skill patterns (robust + realistic)
-# -------------------------------------------------
-
 SKILL_PATTERNS = {
     "Python": [r"\bpython\b"],
-    "Machine Learning": [
-        r"\bmachine learning\b",
-        r"\bml\b"
-    ],
-    "Data Science": [
-        r"\bdata science\b",
-        r"\bdata analysis\b",
-        r"\bpandas\b",
-        r"\bnumpy\b"
-    ],
-    "Web Development": [
-        r"\breact\b",
-        r"\bhtml\b",
-        r"\bcss\b",
-        r"\bjavascript\b"
-    ],
-    "Backend Development": [
-        r"\bflask\b",
-        r"\bdjango\b",
-        r"\bfastapi\b",
-        r"\bapi\b"
-    ],
-    "Databases": [
-        r"\bsql\b",
-        r"\bmysql\b",
-        r"\bpostgres\b",
-        r"\bmongodb\b"
-    ],
-    "Power BI": [
-        r"\bpower bi\b",
-        r"\bdax\b"
-    ],
-    "Core CS": [
-        r"\boperating systems\b",
-        r"\bcomputer networks\b",
-        r"\boop\b",
-        r"\bobject oriented\b"
-    ]
+    "SQL": [r"\bsql\b", r"\bmysql\b", r"\bpostgres(?:ql)?\b"],
+    "Machine Learning": [r"\bmachine learning\b", r"\bml\b", r"\bscikit[- ]learn\b"],
+    "Data Science": [r"\bdata science\b", r"\bdata analysis\b", r"\bpandas\b", r"\bnumpy\b"],
+    "NLP": [r"\bnlp\b", r"\bnatural language processing\b", r"\btransformers?\b"],
+    "Deep Learning": [r"\bdeep learning\b", r"\btensorflow\b", r"\bpytorch\b"],
+    "Web Development": [r"\breact(?:\.js)?\b", r"\bhtml\b", r"\bcss\b", r"\bjavascript\b"],
+    "Backend Development": [r"\bflask\b", r"\bdjango\b", r"\bfastapi\b", r"\bnode(?:\.js)?\b", r"\brest(?:ful)? api\b"],
+    "Databases": [r"\bsql\b", r"\bmysql\b", r"\bpostgres(?:ql)?\b", r"\bmongodb\b", r"\bredis\b"],
+    "Cloud / DevOps": [r"\baws\b", r"\bazure\b", r"\bgcp\b", r"\bdocker\b", r"\bkubernetes\b", r"\bci/cd\b"],
+    "Power BI": [r"\bpower bi\b", r"\bdax\b"],
+    "Core CS": [r"\boperating systems\b", r"\bcomputer networks\b", r"\boop\b", r"\bobject[- ]oriented\b", r"\bdata structures?\b", r"\balgorithms?\b"],
+    "Git / GitHub": [r"\bgit(?:hub)?\b"],
 }
 
-# -------------------------------------------------
-# TEXT NORMALIZATION (CRITICAL FIX)
-# -------------------------------------------------
 
 def normalize_text(text: str) -> str:
-    """
-    Fix PDF extraction issues where characters are space-separated.
-    Example: 'P y t h o n' -> 'python'
-    """
-    # Remove spaces between single characters
-    text = re.sub(r'(?<=\b[A-Za-z])\s+(?=[A-Za-z]\b)', '', text)
-
-    # Normalize multiple spaces
-    text = re.sub(r'\s+', ' ', text)
-
-    return text.lower()
+    """Normalize PDF extraction noise without destroying meaningful words."""
+    text = text.replace("\x00", " ")
+    text = re.sub(r"(?<=\b[A-Za-z])\s+(?=[A-Za-z]\b)", "", text)
+    return re.sub(r"\s+", " ", text).strip().lower()
 
 
-# -------------------------------------------------
-# Resume Analyzer
-# -------------------------------------------------
+def extract_required_skills(job_desc: str) -> List[str]:
+    """Extract skills from a job description using the same controlled vocabulary."""
+    if not job_desc:
+        return []
+    clean = normalize_text(job_desc)
+    return sorted(skill for skill, patterns in SKILL_PATTERNS.items() if any(re.search(p, clean) for p in patterns))
+
 
 def analyze_resume(text: str, job_desc: str = "") -> Dict:
-
     if not text or not isinstance(text, str):
-        return {
-            "skills": [],
-            "score": 0,
-            "summary": "No resume text provided"
-        }
+        return {"skills": [], "required_skills": extract_required_skills(job_desc), "matched_skills": [], "missing_skills": extract_required_skills(job_desc), "score": 0.0, "summary": "No resume text provided"}
 
     clean_text = normalize_text(text)
+    matched_skills = sorted({skill for skill, patterns in SKILL_PATTERNS.items() if any(re.search(pattern, clean_text) for pattern in patterns)})
+    required_skills = extract_required_skills(job_desc)
 
-    matched_skills: List[str] = []
-
-    for skill, patterns in SKILL_PATTERNS.items():
-        for pattern in patterns:
-            if re.search(pattern, clean_text):
-                matched_skills.append(skill)
-                break
-
-    matched_skills = sorted(set(matched_skills))
-
-    # -----------------------------
-    # Scoring (realistic ATS-style)
-    # -----------------------------
-    score = min(len(matched_skills) * 12, 100)
-
-    summary = (
-        f"Detected {len(matched_skills)} skill areas: "
-        f"{', '.join(matched_skills)}"
-        if matched_skills
-        else "No recognizable technical skills detected"
-    )
+    if required_skills:
+        matched_required = sorted(set(matched_skills) & set(required_skills))
+        score = round((len(matched_required) / len(required_skills)) * 100, 2)
+        missing = sorted(set(required_skills) - set(matched_skills))
+        summary = f"Matched {len(matched_required)}/{len(required_skills)} job-relevant skill areas"
+    else:
+        score = min(len(matched_skills) * 10.0, 100.0)
+        matched_required = matched_skills
+        missing = []
+        summary = f"Detected {len(matched_skills)} technical skill areas"
 
     return {
         "skills": matched_skills,
+        "required_skills": required_skills,
+        "matched_skills": matched_required,
+        "missing_skills": missing,
         "score": score,
-        "summary": summary
+        "summary": summary,
     }
