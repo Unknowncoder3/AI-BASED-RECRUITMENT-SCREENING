@@ -1,0 +1,42 @@
+name: Improve CandidateIQ voice interview
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  improve-voice:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Replace voice interview component
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("frontend/src/CandidateIQApp.jsx")
+          text = path.read_text(encoding="utf-8")
+
+          start = text.index("function Voice({p,type,next}){")
+          end = text.index("function Coding({p,next}){", start)
+
+          voice = r'''function Voice({p,type,next}){const qs=type==="technical"?[`Explain your strongest ${p.role} project and your contribution.`,`How did you validate it and what metrics did you use?`,`You listed ${roles[p.role].skills.split(",")[0]}. Explain a challenging problem you solved with it.`,`What trade-off did you make in a project?`,`How would you take the project to production?`]:["Tell me about yourself and why you want this role.","Describe a difficult problem you solved.","How do you handle disagreement in a team?","What weakness are you actively improving?","Why should we select you?"];const[q,setQ]=useState(0),[text,setText]=useState(""),[ans,setAns]=useState([]),[rec,setRec]=useState(false),[speaking,setSpeaking]=useState(false),[voiceReady,setVoiceReady]=useState(true);const recognitionRef=React.useRef(null),runningRef=React.useRef(false),finalTextRef=React.useRef(""),restartTimerRef=React.useRef(null);const speak=()=>{if(!window.speechSynthesis)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(qs[q]);u.lang="en-US";u.rate=.96;u.pitch=1;u.onstart=()=>setSpeaking(true);u.onend=()=>{setSpeaking(false);if(!runningRef.current)startListening()};u.onerror=()=>{setSpeaking(false);if(!runningRef.current)startListening()};window.speechSynthesis.speak(u)};const stopRecognition=()=>{runningRef.current=false;if(restartTimerRef.current)clearTimeout(restartTimerRef.current);const x=recognitionRef.current;if(x){try{x.onend=null;x.stop()}catch{} }setRec(false)};const startListening=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){setVoiceReady(false);return}if(runningRef.current)return;runningRef.current=true;setRec(true);const x=new SR();recognitionRef.current=x;x.lang="en-US";x.continuous=true;x.interimResults=true;x.maxAlternatives=1;x.onresult=e=>{let final="",interim="";for(let i=e.resultIndex;i<e.results.length;i++){const part=e.results[i][0].transcript;if(e.results[i].isFinal)final+=part+" ";else interim+=part}if(final){finalTextRef.current=(finalTextRef.current+final).replace(/\s+/g," ").trim();setText(finalTextRef.current)}else if(interim){setText((finalTextRef.current+" "+interim).replace(/\s+/g," ").trim())}};x.onerror=e=>{if(e.error!=="aborted"&&e.error!=="not-allowed"){restartTimerRef.current=setTimeout(()=>{if(runningRef.current)startRecognitionAgain()},250)}};x.onend=()=>{if(runningRef.current){restartTimerRef.current=setTimeout(()=>{if(runningRef.current)startRecognitionAgain()},120)}};try{x.start()}catch{runningRef.current=false;setRec(false)}};const startRecognitionAgain=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR||!runningRef.current)return;const x=new SR();recognitionRef.current=x;x.lang="en-US";x.continuous=true;x.interimResults=true;x.maxAlternatives=1;x.onresult=e=>{let final="",interim="";for(let i=e.resultIndex;i<e.results.length;i++){const part=e.results[i][0].transcript;if(e.results[i].isFinal)final+=part+" ";else interim+=part}if(final){finalTextRef.current=(finalTextRef.current+final).replace(/\s+/g," ").trim();setText(finalTextRef.current)}else if(interim){setText((finalTextRef.current+" "+interim).replace(/\s+/g," ").trim())}};x.onerror=e=>{if(e.error!=="aborted"&&e.error!=="not-allowed")restartTimerRef.current=setTimeout(()=>{if(runningRef.current)startRecognitionAgain()},250)};x.onend=()=>{if(runningRef.current)restartTimerRef.current=setTimeout(()=>{if(runningRef.current)startRecognitionAgain()},120)};try{x.start()}catch{restartTimerRef.current=setTimeout(()=>{if(runningRef.current)startRecognitionAgain()},250)}};useEffect(()=>{setVoiceReady(!!(window.SpeechRecognition||window.webkitSpeechRecognition));finalTextRef.current="";setText("");stopRecognition();setTimeout(()=>speak(),250);return()=>{stopRecognition();window.speechSynthesis?.cancel()}},[q]);function submit(){stopRecognition();window.speechSynthesis?.cancel();const answer=(finalTextRef.current||text).trim();const all=[...ans,answer];if(q<qs.length-1){setAns(all);finalTextRef.current="";setText("");setQ(q+1)}else next({score:Math.min(95,Math.max(55,55+all.join(" ").split(/\s+/).filter(Boolean).length/8))})}return <><div style={{marginBottom:22}}><span className="eyebrow">🎙️ {type.toUpperCase()} INTERVIEW</span><h1 style={{fontSize:40,margin:"15px 0 7px"}}>{type==="technical"?"Technical interview":"HR & communication interview"}</h1><p className="muted">AI asks the question aloud. Take natural pauses while answering — your microphone stays active until you submit.</p></div><div className="card" style={{maxWidth:900,margin:"auto"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><Tag>AI INTERVIEWER</Tag><div style={{display:"flex",gap:8,alignItems:"center"}}><span className="muted" style={{fontSize:11}}>QUESTION {q+1} / {qs.length}</span><span className="status" style={{fontSize:10,color:rec?"#3ddc97":"var(--muted)"}}><i style={{background:rec?"#3ddc97":"var(--muted)"}}/>{rec?"Listening continuously":"Ready"}</span></div></div><div className="divider"/><div style={{textAlign:"center",padding:"20px 10px"}}><div style={{width:88,height:88,borderRadius:"50%",margin:"auto",display:"grid",placeItems:"center",background:speaking?"linear-gradient(135deg,#9b83ff,#5a3fe0)":"linear-gradient(135deg,#8065ff,#4e38c8)",boxShadow:speaking?"0 0 0 14px var(--soft),0 0 38px #8065ff66":"0 0 0 12px var(--soft)",fontSize:31,transition:".2s"}}>✦</div><div className="muted" style={{fontSize:11,marginTop:15}}>{speaking?"AI is asking the question…":rec?"Listening — pauses up to several seconds are okay":"AI interview ready"}</div><h2 style={{fontSize:25,lineHeight:1.4,maxWidth:700,margin:"22px auto"}}>{qs[q]}</h2><div style={{display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap"}}>{!speaking&&<Btn secondary onClick={speak}>🔊 Repeat question</Btn>}{!rec&&!speaking&&<Btn onClick={startListening}>🎙️ Start answer</Btn>}{rec&&<Btn secondary onClick={stopRecognition}>⏸ Pause microphone</Btn>}</div>{!voiceReady&&<div className="metric" style={{maxWidth:720,margin:"18px auto 0",textAlign:"left"}}><b style={{fontSize:13}}>Voice recognition isn't available in this browser.</b><p className="muted" style={{fontSize:11,marginBottom:0}}>Use Chrome/Edge for voice capture, or type your answer below.</p></div>}<textarea className="input" style={{minHeight:140,maxWidth:720,margin:"22px auto 0",display:"block"}} value={text} onChange={e=>{finalTextRef.current=e.target.value;setText(e.target.value)}} placeholder={rec?"Listening… speak naturally; short pauses are allowed.":"Your answer transcript appears here…"}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",maxWidth:720,margin:"12px auto 0",gap:12}}><span className="muted" style={{fontSize:10,textAlign:"left"}}>🎙️ Recording remains active until you submit this answer.</span><Btn disabled={!text.trim()} onClick={submit}>{q===qs.length-1?"Submit & finish →":"Submit answer →"}</Btn></div></div></div></>}
+'''
+
+          path.write_text(text[:start] + voice + text[end:], encoding="utf-8")
+          PY
+
+      - name: Remove one-shot workflow and commit
+        run: |
+          git config user.name "CandidateIQ Bot"
+          git config user.email "candidateiq-bot@users.noreply.github.com"
+          rm -f .github/workflows/improve-voice-interview.yml
+          git add frontend/src/CandidateIQApp.jsx .github/workflows/improve-voice-interview.yml
+          git commit -m "feat: make voice interview continuous and natural"
+          git push
