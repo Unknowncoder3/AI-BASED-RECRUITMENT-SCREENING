@@ -1,7 +1,7 @@
 /* CandidateIQ visual layer
    Strong SaaS contrast for both dark and light themes.
-   Theme tokens are defined by CandidateIQApp.jsx; these rules deliberately
-   strengthen field boundaries without changing the application's behavior. */
+   Theme tokens are defined by CandidateIQApp.jsx; these rules strengthen
+   field boundaries and the interview journey without changing behavior. */
 
 html{scroll-behavior:smooth}
 body{margin:0;min-width:320px;font-synthesis:none;text-rendering:optimizeLegibility}
@@ -26,8 +26,66 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .cq .input::placeholder{color:var(--muted)!important;opacity:.95!important}
 .cq select.input{color:var(--text)!important;cursor:pointer}
 
-/* The feature-pill row under the hero is intentionally removed from the UI. */
+/* The four hero pills are consolidated into the real six-stage journey below. */
 .cq .hero > div{display:none!important}
+
+/* Professional interview journey / stepper */
+.cq .main > .card:first-child{
+  position:relative;
+  padding:16px 18px!important;
+  margin-bottom:28px!important;
+  background:linear-gradient(180deg,var(--card),var(--panel))!important;
+  border:1px solid #34405a!important;
+  box-shadow:0 12px 36px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.035)!important;
+  overflow:hidden;
+}
+.cq .main > .card:first-child:before{
+  content:"INTERVIEW JOURNEY";
+  display:block;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.14em;
+  margin:0 0 13px 2px;
+}
+.cq .main > .card:first-child > div{
+  position:relative;
+  min-width:700px;
+}
+.cq .main > .card:first-child .step{
+  position:relative;
+  min-height:34px;
+  align-items:center;
+  gap:8px;
+  z-index:2;
+}
+.cq .main > .card:first-child .step:after{
+  content:"";
+  position:absolute;
+  left:31px;
+  right:-6px;
+  top:13px;
+  height:1px;
+  background:linear-gradient(90deg,#8065ff88,var(--line));
+  z-index:-1;
+}
+.cq .main > .card:first-child .step:last-child:after{display:none}
+.cq .main > .card:first-child .dot{
+  width:30px!important;
+  height:30px!important;
+  min-width:30px;
+  border:2px solid #202a3c;
+  box-shadow:0 0 0 4px var(--card),0 5px 14px rgba(0,0,0,.18);
+  z-index:3;
+}
+.cq .main > .card:first-child .step span:last-child{
+  color:var(--muted)!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  white-space:nowrap;
+  letter-spacing:.01em;
+  text-shadow:0 1px 8px rgba(0,0,0,.16);
+}
 
 .cq .drop{
   color:var(--text)!important;
@@ -42,8 +100,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media (prefers-color-scheme: light){
   .cq .input{border-color:#c6cede!important;box-shadow:0 2px 8px rgba(31,41,68,.06)!important}
   .cq .input:hover{border-color:#9b8fe8!important}
+  .cq .main > .card:first-child{border-color:#d4d9e6!important;box-shadow:0 10px 28px rgba(31,41,68,.08)!important}
 }
 
 @media(max-width:850px){
   .cq .grid2,.cq .grid3,.cq .grid4{grid-template-columns:1fr}
+  .cq .main > .card:first-child{overflow-x:auto;scrollbar-width:thin}
+}
+
+@media(max-width:560px){
+  .cq .main > .card:first-child{padding:14px!important;margin-bottom:22px!important}
+  .cq .main > .card:first-child > div{min-width:680px}
 }
