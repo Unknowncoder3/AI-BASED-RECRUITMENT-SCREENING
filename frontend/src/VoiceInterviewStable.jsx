@@ -17,7 +17,7 @@ function chooseVoice(){if(!window.speechSynthesis)return null;const v=window.spe
 export default function VoiceInterviewStable({p,phase,onComplete}){
  const [questions,setQuestions]=useState([]),[index,setIndex]=useState(0),[answer,setAnswer]=useState(""),[answers,setAnswers]=useState([]),[listening,setListening]=useState(false),[speaking,setSpeaking]=useState(false),[ready,setReady]=useState(false),[voice,setVoice]=useState(null),[events,setEvents]=useState([]),[terminated,setTerminated]=useState(false),[reason,setReason]=useState(""),[speechStatus,setSpeechStatus]=useState("");
  const recognitionRef=useRef(null),activeRef=useRef(false),transcriptRef=useRef(""),timerRef=useRef(null),generationRef=useRef(0),questionRef=useRef(0),askedRef=useRef([]),retryRef=useRef(0);
- const emit=e=>setEvents(cur=>[...cur,{...e,time:e.time||new Date().toISOString()}]);
+ const emit=e=>{if(e?.type==="proctoring_started"||e?.type==="proctoring_ready")setReady(true);setEvents(cur=>[...cur,{...e,time:e?.time||new Date().toISOString()}]);};
  const clearRecognitionTimer=()=>{if(timerRef.current){clearTimeout(timerRef.current);timerRef.current=null;}};
  const stopListening=()=>{activeRef.current=false;generationRef.current++;retryRef.current=0;clearRecognitionTimer();try{recognitionRef.current?.abort()}catch{}recognitionRef.current=null;setListening(false);};
  useEffect(()=>{const h=readHistory(p,phase);askedRef.current=h;setQuestions(makeQuestions(p,phase,h));setIndex(0);setAnswers([]);setAnswer("");setReady(false);setTerminated(false);setReason("");setSpeechStatus("");},[p.role,p.branch,phase]);
