@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -13,19 +14,14 @@ from analyzers.resume_analyzer import analyze_resume
 from scoring.score_engine import final_score, score_breakdown
 from utils.pdf_parser import extract_text_from_pdf
 
-app = FastAPI(
-    title="Candidate Intelligence API",
-    version="1.1.0",
-    description="Job-aware candidate screening API for the AI Candidate Intelligence Platform.",
-)
+app = FastAPI(title="Candidate Intelligence API", version="1.2.0", description="Job-aware candidate screening API for CandidateIQ.")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip()
+if frontend_origin:
+    origins.extend([origin.strip() for origin in frontend_origin.split(",") if origin.strip()])
+
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
 class CandidateInput(BaseModel):
@@ -40,12 +36,11 @@ class CandidateInput(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "candidate-intelligence-api", "version": "1.1.0"}
+    return {"status": "ok", "service": "candidate-intelligence-api", "version": "1.2.0"}
 
 
 @app.post("/api/v1/resume/extract")
 async def extract_resume(file: UploadFile = File(...)) -> dict[str, Any]:
-    """Extract text from a PDF resume without persisting the uploaded file."""
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=415, detail="Only PDF resumes are supported")
     data = await file.read()
@@ -64,22 +59,8 @@ async def extract_resume(file: UploadFile = File(...)) -> dict[str, Any]:
 @app.post("/api/v1/screen")
 def screen_candidate(candidate: CandidateInput) -> dict[str, Any]:
     resume = analyze_resume(candidate.resume_text, candidate.job_description)
-    github = analyze_github(candidate.github_username) if candidate.github_username else {
-        "score": 0.0,
-        "summary": "No GitHub username provided",
-    }
+    github = analyze_github(candidate.github_username) if candidate.github_username else {"score": 0.0, "summary": "No GitHub username provided"}
     academics = analyze_academics(candidate.tenth, candidate.twelfth, candidate.cgpa)
     projects = analyze_projects(candidate.projects, candidate.job_description)
-
     score = final_score(resume["score"], github["score"], academics["score"], projects["score"])
-    return {
-        "screening_score": score,
-        "breakdown": score_breakdown(
-            resume["score"], github["score"], academics["score"], projects["score"]
-        ),
-        "resume": resume,
-        "github": github,
-        "academics": academics,
-        "projects": projects,
-        "human_review_required": True,
-    }
+    return {"screening_score": score, "breakdown": score_breakdown(resume["score"], github["score"], academics["score"], projects["score"]), "resume": resume, "github": github, "academics": academics, "projects": projects, "human_review_required": True}
