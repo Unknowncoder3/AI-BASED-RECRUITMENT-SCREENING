@@ -1,36 +1,30 @@
-import subprocess
 import json
-import shlex
+import subprocess
 
 
 def run_llm(prompt: str, model: str = "mistral", timeout: int = 30) -> str:
-    """
-    Run Ollama LLM safely with timeout.
-    Prevents Streamlit from hanging forever.
-    """
-
+    """Run a local Ollama model with bounded execution and clear failures."""
     try:
-        command = f"ollama run {model}"
         process = subprocess.run(
-            shlex.split(command),
+            ["ollama", "run", model],
             input=prompt,
             text=True,
             capture_output=True,
-            timeout=timeout
+            timeout=timeout,
+            check=False,
         )
+        return process.stdout.strip() if process.returncode == 0 else ""
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return ""
 
-        if process.returncode != 0:
-            return "⚠️ LLM failed to generate recommendation."
 
-        output = process.stdout.strip()
-
-        if not output:
-            return "⚠️ LLM returned empty response."
-
-        return output
-
-    except subprocess.TimeoutExpired:
-        return "⚠️ LLM timed out. Try a smaller input or ensure Ollama is running."
-
-    except Exception as e:
-        return f"⚠️ LLM error: {str(e)}"
+def run_llm_json(prompt: str, model: str = "mistral", timeout: int = 30) -> dict:
+    """Ask the local LLM for JSON and fail closed on malformed output."""
+    raw = run_llm(prompt, model=model, timeout=timeout)
+    if not raw:
+        return {}
+    cleaned = raw.strip().removeprefix("```json").removesuffix("```").strip()
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        return {}
