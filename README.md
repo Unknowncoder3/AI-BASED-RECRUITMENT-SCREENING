@@ -1,143 +1,115 @@
-# 🤖 AI-Based Candidate Screening & Interview System
+# 🤖 AI Candidate Intelligence Platform
 
 <p align="center">
-  <b>End-to-end recruitment screening prototype combining deterministic scoring, GitHub analysis, local LLM assistance, interviews and lightweight integrity checks.</b>
+  <b>Job-aware candidate screening and adaptive interviewing with deterministic scoring, GitHub evidence, local LLM reasoning, and explainable recommendations.</b>
 </p>
 
 <p align="center">
   <a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING">Repository</a>
+  ·
+  <a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING/actions">CI</a>
 </p>
 
 ---
 
-## 📌 Overview
+## 🎯 What problem does it solve?
 
-This project explores how a recruitment workflow can combine structured candidate information with AI-assisted analysis in a single application.
+Recruiters often have to combine resumes, job descriptions, project claims, GitHub activity, academic information, and interview notes manually. This project turns those inputs into a **structured candidate evidence profile** and an AI-assisted recommendation.
 
-The system accepts resume information, GitHub profile data, academic information and project details, then combines deterministic scoring with a **local LLM-based recommendation layer**. It also includes HR/technical interview workflows, voice interaction and lightweight webcam-based integrity signals.
+The platform is intentionally designed as a **decision-support system**, not an autonomous hiring system. A human reviewer remains responsible for the employment decision.
 
-> **Important:** This is a portfolio/research prototype, not a validated hiring system. Recruitment decisions should remain subject to qualified human review. The system should not be used as the sole basis for employment decisions.
+## ✨ Current capabilities
 
----
+- **Job-aware resume matching** — extracts technical skill areas and compares them with the target job description.
+- **GitHub portfolio analysis** — retrieves repository/language signals through the GitHub API with a public-profile fallback.
+- **Project relevance scoring** — measures technical breadth, practical signals, and overlap with the target role.
+- **Academic scoring** — converts 10th, 12th, and CGPA inputs into a normalized signal.
+- **Explainable screening score** — Resume 35%, GitHub 25%, Academics 25%, Projects 15%.
+- **Adaptive technical interview** — questions progress from Easy → Medium → Hard and use candidate/job context.
+- **Structured LLM evaluation** — local Ollama inference returns validated JSON rather than fragile text parsing.
+- **Recruiter evidence view** — shows score components, missing skills, project strengths, and interview evidence.
+- **PDF report generation** — exports a recruiter-facing evaluation summary.
+- **Automated tests + CI** — core scoring and analyzer behavior is covered by pytest and GitHub Actions.
 
-## ✨ Core Features
-
-### 📄 Resume Analysis
-- PDF/text resume processing
-- Technical skill extraction
-- Normalization of common skill names
-
-### 🐙 GitHub Analysis
-- Accepts GitHub username or profile URL
-- Repository/language information retrieval
-- Portfolio-oriented scoring signals
-
-### 🎓 Academic Evaluation
-- Supports school percentages and CGPA inputs
-- Converts structured academic information into scoring signals
-
-### 🧩 Project Analysis
-- Evaluates project descriptions
-- Looks for practical/project-domain coverage
-- Separates project-related signals from other candidate information
-
-### 🤖 Local LLM Recommendation
-- Uses Ollama for local inference
-- Generates an AI-assisted candidate recommendation
-- Avoids dependence on paid external LLM APIs
-
-### 🎤 Multi-Round Interview
-- HR interview workflow
-- Technical interview workflow
-- Context-aware follow-up questions
-- Text and voice interaction
-
-### 👁️ Lightweight Integrity Signals
-- Webcam-based face detection
-- Flags conditions such as no face or multiple faces
-- Designed as an interview signal rather than a definitive behavioral judgment
-
-### 🏁 Decision Engine
-Produces configurable outcome categories such as:
-
-`STRONG HIRE` · `HIRE` · `HOLD` · `REJECT`
-
-The result should be treated as an **AI-assisted recommendation**, not an autonomous employment decision.
-
----
-
-## 🏗️ System Architecture
+## 🏗️ Architecture
 
 ```text
-Candidate Inputs
-     │
-     ├── Resume PDF/Text
-     ├── GitHub Profile
-     ├── Academic Data
-     └── Project Information
-             │
-             ▼
-      Feature Extraction
-             │
-      ┌──────┼────────┐
-      ▼      ▼        ▼
-   Resume  GitHub  Academics
-   Parser  Analyzer Analyzer
-      └──────┼────────┘
-             ▼
-       Project Analyzer
-             │
-             ▼
-      Deterministic Score
-             │
-             ▼
-       Local LLM Layer
-             │
-             ▼
-       AI Recommendation
-             │
-             ├──────────────┐
-             ▼              ▼
-      Interview Engine   Integrity Signals
-             │              │
-             └──────┬───────┘
-                    ▼
-             Final Decision
+                  ┌──────────────────────┐
+                  │   Job Description    │
+                  └──────────┬───────────┘
+                             │
+Candidate ───────────────────┼───────────────────────┐
+   │                         │                       │
+   ├── Resume PDF ──► Resume/JD Matcher              │
+   ├── GitHub ──────► Portfolio Analyzer             │
+   ├── Projects ────► Project Relevance Analyzer     │
+   └── Academics ───► Academic Analyzer              │
+                             │                       │
+                             ▼                       │
+                    Explainable Score                │
+                   35 / 25 / 25 / 15                 │
+                             │                       │
+                             ▼                       │
+                    Adaptive Interview ◄─────────────┘
+                             │
+                             ▼
+                    Local LLM Evaluation
+                             │
+                             ▼
+                  Human-review Recommendation
+                             │
+                             ▼
+                    Recruiter PDF Report
 ```
 
----
+## 📊 Screening model
 
-## 📊 Base Scoring Model
+| Signal | Weight | Purpose |
+|---|---:|---|
+| Resume / JD match | 35% | Job-relevant technical skills |
+| GitHub | 25% | Portfolio and engineering signals |
+| Academics | 25% | Structured academic consistency |
+| Projects | 15% | Technical breadth and practical relevance |
 
-The current documented screening model uses:
+The weights are configurable prototype assumptions, **not validated predictors of hiring success**.
 
-| Component | Weight |
-|---|---:|
-| Resume Skills | 35% |
-| GitHub Profile | 25% |
-| Academics | 25% |
-| Projects | 15% |
+After screening, the interview contributes additional evidence. The final output is a recommendation such as **STRONG MATCH, MATCH, HOLD, or REJECT** and must be reviewed by a qualified human.
 
-Interview and integrity-related signals are handled separately in the overall workflow.
+## 🧠 AI design
 
-> These weights are configurable design choices for the prototype, not evidence that they are predictive of real-world hiring outcomes.
+The project uses a hybrid approach:
 
----
+1. **Deterministic analyzers** extract reproducible signals.
+2. **A transparent weighted score** combines those signals.
+3. **A local Ollama model** generates interview questions and evaluates answers.
+4. **Structured JSON validation** prevents malformed model output from silently corrupting scores.
+5. **Evidence is displayed with the recommendation** so a recruiter can inspect why the system reached it.
 
-## 🧰 Tech Stack
+This separation makes the system easier to test and debug than an LLM-only screening workflow.
 
-- **Python** — application and scoring logic
-- **Streamlit** — user interface
-- **Ollama** — local LLM inference
-- **OpenCV** — webcam/vision processing
-- **SpeechRecognition** — speech input
-- **pyttsx3** — speech output
-- **PDFMiner / regex** — document processing
-- **GitHub Public API** — profile/repository information
+## 🔐 Responsible AI
 
----
+Recruitment is a high-impact domain. This project is a portfolio/research prototype and should not be used as the sole basis for employment decisions.
 
-## 📂 Project Structure
+- Human review is required for every recommendation.
+- The interview evaluator is instructed not to score protected characteristics or appearance.
+- Webcam functionality is **preview-only**; it is not a validated emotion, honesty, or cheating detector.
+- Local LLM inference reduces external AI dependency but does not by itself guarantee privacy.
+- Production use would require consent, access control, security testing, retention policies, model validation, fairness testing, monitoring, and legal/compliance review.
+
+## 🛠️ Tech stack
+
+- Python
+- Streamlit
+- Ollama / local LLM inference
+- PyPDF
+- FPDF2
+- GitHub Public API
+- BeautifulSoup fallback parsing
+- Pytest
+- GitHub Actions
+
+## 📁 Project structure
 
 ```text
 AI-BASED-RECRUITMENT-SCREENING/
@@ -148,8 +120,6 @@ AI-BASED-RECRUITMENT-SCREENING/
 │   ├── academic_analyzer.py
 │   └── project_analyzer.py
 ├── interview/
-│   ├── hr_interviewer.py
-│   └── technical_interviewer.py
 ├── llm/
 │   ├── ollama_client.py
 │   └── prompts.py
@@ -160,108 +130,66 @@ AI-BASED-RECRUITMENT-SCREENING/
 │   ├── pdf_parser.py
 │   ├── speech.py
 │   └── camera.py
-├── screenshots/
+├── tests/
+│   ├── test_scoring.py
+│   └── test_analyzers.py
+├── .github/workflows/ci.yml
 ├── requirements.txt
 └── README.md
 ```
 
----
-
-## 📸 Application Screenshots
-
-### Main Dashboard
-![Main Dashboard](screenshots/first.png)
-
-### Resume Analysis
-![Resume Analysis](screenshots/second.png)
-
-### GitHub Analysis
-![GitHub Analysis](screenshots/third.png)
-
-### Academic & Project Evaluation
-![Academic and Project Evaluation](screenshots/fourth.png)
-
-### AI Recommendation
-![AI Recommendation](screenshots/fifth.png)
-
----
-
-## ⚙️ Local Setup
+## 🚀 Local setup
 
 ```bash
 git clone https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING.git
 cd AI-BASED-RECRUITMENT-SCREENING
 python -m venv .venv
-```
-
-Activate the environment and install dependencies:
-
-```bash
+source .venv/bin/activate       # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Install Ollama separately and pull a supported local model, for example:
+Install and start Ollama separately, then pull the model configured by the application (for example `mistral`):
 
 ```bash
-ollama pull llama3
+ollama pull mistral
 ollama serve
 ```
 
-Start the application:
+Run the app:
 
 ```bash
 streamlit run app.py
 ```
 
-Open `http://localhost:8501`.
+Run tests:
 
----
+```bash
+pytest -q
+```
 
-## 🧪 Example Workflow
+## 🧪 Example workflow
 
-### Screening
+1. Paste the target **job description**.
+2. Upload a candidate resume.
+3. Enter GitHub and academic information.
+4. Add project descriptions.
+5. Review the explainable screening score and missing skills.
+6. Run the adaptive technical interview.
+7. Review interview evidence and the AI-assisted recommendation.
+8. Generate a recruiter PDF report.
 
-1. Upload or provide resume information.
-2. Enter a GitHub username/profile URL.
-3. Provide academic information.
-4. Add project information.
-5. Run the screening workflow.
+## 🔮 Roadmap
 
-### Interview
-
-1. Select HR or technical mode.
-2. Answer questions through text or voice.
-3. Continue through adaptive follow-ups.
-4. Optionally enable lightweight webcam integrity checks.
-5. Generate the final AI-assisted recommendation.
-
----
-
-## 🔐 Privacy & Responsible AI
-
-This project is designed as a local-first prototype, but responsible deployment requires additional controls.
-
-- Candidate data should be handled with appropriate consent and access controls.
-- Local LLM inference reduces dependence on external AI APIs but does not automatically guarantee privacy.
-- Automated hiring decisions can introduce bias and should not replace qualified human review.
-- Webcam signals should not be interpreted as reliable measurements of honesty, emotion, personality or job suitability.
-- Any production deployment would require validation, auditing, security controls, data-retention policies and legal/compliance review.
-
----
-
-## 🔮 Future Improvements
-
-- Coding interview with executable test cases
-- Structured interview scoring rubric
-- Candidate report export
-- Recruiter/admin dashboard
-- Automated tests and CI
-- Audit trail for scoring decisions
-- Fairness and bias evaluation
-- Stronger authentication and authorization
-- Production deployment architecture
-
----
+- Semantic embedding-based JD matching
+- Job-specific weighting profiles
+- Evidence extraction with source locations from resumes
+- Secure isolated coding sandbox
+- Candidate comparison dashboard
+- Fairness benchmark and bias monitoring
+- Authentication / RBAC
+- Persistent audit trail
+- Model evaluation benchmark
+- Containerized deployment
 
 ## 👨‍💻 Author
 
@@ -272,4 +200,4 @@ This project is designed as a local-first prototype, but responsible deployment 
 
 ---
 
-⭐ Explore the implementation to see how the individual analyzers, scoring layer, interview modules and local LLM are connected.
+⭐ If you explore the project, start with `app.py`, then follow the analyzers → scoring → LLM → interview flow.
