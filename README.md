@@ -2,7 +2,7 @@
 
 <p align="center"><b>Job-aware candidate screening, portfolio evidence, explainable scoring and recruiter workflows in one modern workspace.</b></p>
 
-<p align="center"><a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING">Repository</a> · <a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING/actions">CI</a></p>
+<p align="center"><a href="https://candidateiq-recruitment.netlify.app/">🚀 Live Demo</a> · <a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING">Repository</a> · <a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING/actions">CI</a></p>
 
 ---
 
@@ -20,6 +20,24 @@ CandidateIQ is a portfolio-grade recruitment intelligence prototype that helps a
 - **Recruiter-facing reporting** and evidence summaries.
 - **Responsive dark-mode UI** designed like a real internal hiring product rather than a demo form.
 - **CI validation** for backend imports/tests and frontend production builds.
+
+## 🖥️ Product screenshots
+
+### Candidate profile & intake
+
+> Screenshots show the live CandidateIQ candidate-practice workflow, including structured profile inputs, resume upload, project evidence and recruiter-oriented interview navigation.
+
+![CandidateIQ — interview journey and candidate profile](screenshots/candidate-profile.png)
+
+![CandidateIQ — candidate intake form](screenshots/candidate-intake.png)
+
+## 🌐 Live application
+
+**CandidateIQ is deployed on Netlify:**
+
+👉 https://candidateiq-recruitment.netlify.app/
+
+The live application demonstrates the candidate practice flow and the recruiter-oriented interview workspace. Backend-dependent features may require the configured deployment environment.
 
 ## 🏗️ Architecture
 
@@ -116,6 +134,9 @@ AI-BASED-RECRUITMENT-SCREENING/
 ├── llm/
 ├── scoring/
 ├── tests/
+├── screenshots/
+│   ├── candidate-profile.png
+│   └── candidate-intake.png
 ├── .github/workflows/ci.yml
 ├── requirements.txt
 └── README.md
@@ -129,7 +150,7 @@ AI-BASED-RECRUITMENT-SCREENING/
 git clone https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING.git
 cd AI-BASED-RECRUITMENT-SCREENING
 python -m venv .venv
-source .venv/bin/activate       # Windows: .venv\Scripts\activate
+source .venv/bin/activate       # Windows: .venv\\Scripts\\activate
 pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload --port 8000
 ```
