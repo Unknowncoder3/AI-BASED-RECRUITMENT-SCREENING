@@ -1,65 +1,52 @@
-# 🤖 AI Candidate Intelligence Platform
+# 🤖 CandidateIQ — AI Candidate Intelligence Platform
 
-<p align="center">
-  <b>Job-aware candidate screening and adaptive interviewing with deterministic scoring, GitHub evidence, local LLM reasoning, and explainable recommendations.</b>
-</p>
+<p align="center"><b>Job-aware candidate screening, portfolio evidence, explainable scoring and recruiter workflows in one modern workspace.</b></p>
 
-<p align="center">
-  <a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING">Repository</a>
-  ·
-  <a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING/actions">CI</a>
-</p>
+<p align="center"><a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING">Repository</a> · <a href="https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING/actions">CI</a></p>
 
 ---
 
-## 🎯 What problem does it solve?
+## 🎯 Product vision
 
-Recruiters often have to combine resumes, job descriptions, project claims, GitHub activity, academic information, and interview notes manually. This project turns those inputs into a **structured candidate evidence profile** and an AI-assisted recommendation.
+CandidateIQ is a portfolio-grade recruitment intelligence prototype that helps a recruiter combine a job description with resume, GitHub, academic and project evidence. The product deliberately treats AI as **decision support**, not an autonomous hiring authority: every recommendation remains human-reviewed.
 
-The platform is intentionally designed as a **decision-support system**, not an autonomous hiring system. A human reviewer remains responsible for the employment decision.
+## ✨ Product capabilities
 
-## ✨ Current capabilities
-
-- **Job-aware resume matching** — extracts technical skill areas and compares them with the target job description.
-- **GitHub portfolio analysis** — retrieves repository/language signals through the GitHub API with a public-profile fallback.
-- **Project relevance scoring** — measures technical breadth, practical signals, and overlap with the target role.
-- **Academic scoring** — converts 10th, 12th, and CGPA inputs into a normalized signal.
-- **Explainable screening score** — Resume 35%, GitHub 25%, Academics 25%, Projects 15%.
-- **Adaptive technical interview** — questions progress from Easy → Medium → Hard and use candidate/job context.
-- **Structured LLM evaluation** — local Ollama inference returns validated JSON rather than fragile text parsing.
-- **Recruiter evidence view** — shows score components, missing skills, project strengths, and interview evidence.
-- **PDF report generation** — exports a recruiter-facing evaluation summary.
-- **Automated tests + CI** — core scoring and analyzer behavior is covered by pytest and GitHub Actions.
+- **Recruiter dashboard** with pipeline KPIs, screening trends, status distribution, top jobs and AI insights.
+- **Candidate intake workflow** with PDF resume extraction, structured academic inputs, GitHub username and project evidence.
+- **Explainable scoring** with Resume/JD, GitHub, Academics and Projects components.
+- **GitHub portfolio analysis** for repository and language signals.
+- **Adaptive interview workflow** and local LLM evaluation in the existing backend.
+- **Recruiter-facing reporting** and evidence summaries.
+- **Responsive dark-mode UI** designed like a real internal hiring product rather than a demo form.
+- **CI validation** for backend imports/tests and frontend production builds.
 
 ## 🏗️ Architecture
 
 ```text
-                  ┌──────────────────────┐
-                  │   Job Description    │
-                  └──────────┬───────────┘
-                             │
-Candidate ───────────────────┼───────────────────────┐
-   │                         │                       │
-   ├── Resume PDF ──► Resume/JD Matcher              │
-   ├── GitHub ──────► Portfolio Analyzer             │
-   ├── Projects ────► Project Relevance Analyzer     │
-   └── Academics ───► Academic Analyzer              │
-                             │                       │
-                             ▼                       │
-                    Explainable Score                │
-                   35 / 25 / 25 / 15                 │
-                             │                       │
-                             ▼                       │
-                    Adaptive Interview ◄─────────────┘
-                             │
-                             ▼
-                    Local LLM Evaluation
-                             │
-                             ▼
-                  Human-review Recommendation
-                             │
-                             ▼
-                    Recruiter PDF Report
+React + Vite Recruiter Workspace
+        │
+        ├── Dashboard / Pipeline / Jobs / Interviews / Reports
+        │
+        └── Candidate Intake
+              │
+              ▼
+        FastAPI Screening API
+              │
+       ┌──────┼─────────┐
+       ▼      ▼         ▼
+    Resume  GitHub   Academics + Projects
+       │      │         │
+       └──────┼─────────┘
+              ▼
+       Explainable Score
+       35% / 25% / 25% / 15%
+              │
+              ▼
+       Interview + Local LLM
+              │
+              ▼
+       Human Review Recommendation
 ```
 
 ## 📊 Screening model
@@ -69,70 +56,66 @@ Candidate ───────────────────┼───�
 | Resume / JD match | 35% | Job-relevant technical skills |
 | GitHub | 25% | Portfolio and engineering signals |
 | Academics | 25% | Structured academic consistency |
-| Projects | 15% | Technical breadth and practical relevance |
+| Projects | 15% | Technical breadth and relevance |
 
-The weights are configurable prototype assumptions, **not validated predictors of hiring success**.
-
-After screening, the interview contributes additional evidence. The final output is a recommendation such as **STRONG MATCH, MATCH, HOLD, or REJECT** and must be reviewed by a qualified human.
+These weights are prototype assumptions, **not validated predictors of hiring success**.
 
 ## 🧠 AI design
 
-The project uses a hybrid approach:
+The system uses a hybrid architecture:
 
-1. **Deterministic analyzers** extract reproducible signals.
-2. **A transparent weighted score** combines those signals.
-3. **A local Ollama model** generates interview questions and evaluates answers.
-4. **Structured JSON validation** prevents malformed model output from silently corrupting scores.
-5. **Evidence is displayed with the recommendation** so a recruiter can inspect why the system reached it.
-
-This separation makes the system easier to test and debug than an LLM-only screening workflow.
+1. Deterministic analyzers extract reproducible signals.
+2. A transparent weighted score combines those signals.
+3. A local Ollama model handles contextual interview reasoning.
+4. Structured JSON validation keeps LLM output machine-readable.
+5. The recruiter UI exposes evidence and score components instead of hiding the decision behind a single AI label.
 
 ## 🔐 Responsible AI
 
 Recruitment is a high-impact domain. This project is a portfolio/research prototype and should not be used as the sole basis for employment decisions.
 
 - Human review is required for every recommendation.
-- The interview evaluator is instructed not to score protected characteristics or appearance.
-- Webcam functionality is **preview-only**; it is not a validated emotion, honesty, or cheating detector.
-- Local LLM inference reduces external AI dependency but does not by itself guarantee privacy.
-- Production use would require consent, access control, security testing, retention policies, model validation, fairness testing, monitoring, and legal/compliance review.
+- Protected characteristics must not be used as screening signals.
+- Webcam functionality is preview-only; it is not a validated emotion, honesty or cheating detector.
+- Production deployment would require consent, access control, retention policies, security testing, fairness evaluation, monitoring and legal/compliance review.
 
 ## 🛠️ Tech stack
 
+### Frontend
+- React 19
+- Vite 8
+- Responsive CSS
+- SVG-based analytics visuals
+
+### Backend
 - Python
-- Streamlit
+- FastAPI
+- PyPDF / PDF extraction
+- GitHub API
 - Ollama / local LLM inference
-- PyPDF
-- FPDF2
-- GitHub Public API
-- BeautifulSoup fallback parsing
+- Deterministic scoring analyzers
 - Pytest
-- GitHub Actions
 
 ## 📁 Project structure
 
 ```text
 AI-BASED-RECRUITMENT-SCREENING/
-├── app.py
+├── backend/
+│   ├── main.py
+│   ├── analyzers/
+│   └── requirements.txt
+├── frontend/
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── src/
+│       ├── main.jsx
+│       └── styles.css
 ├── analyzers/
-│   ├── resume_analyzer.py
-│   ├── github_analyzer.py
-│   ├── academic_analyzer.py
-│   └── project_analyzer.py
 ├── interview/
 ├── llm/
-│   ├── ollama_client.py
-│   └── prompts.py
 ├── scoring/
-│   ├── score_engine.py
-│   └── decision_engine.py
-├── utils/
-│   ├── pdf_parser.py
-│   ├── speech.py
-│   └── camera.py
 ├── tests/
-│   ├── test_scoring.py
-│   └── test_analyzers.py
 ├── .github/workflows/ci.yml
 ├── requirements.txt
 └── README.md
@@ -140,56 +123,56 @@ AI-BASED-RECRUITMENT-SCREENING/
 
 ## 🚀 Local setup
 
+### Backend
+
 ```bash
 git clone https://github.com/Unknowncoder3/AI-BASED-RECRUITMENT-SCREENING.git
 cd AI-BASED-RECRUITMENT-SCREENING
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
+uvicorn backend.main:app --reload --port 8000
 ```
 
-Install and start Ollama separately, then pull the model configured by the application (for example `mistral`):
+### Frontend
 
 ```bash
-ollama pull mistral
-ollama serve
+cd frontend
+npm install
+npm run dev
 ```
 
-Run the app:
+Open the Vite URL shown by the terminal. For a deployed backend, set `VITE_API_BASE_URL` in `frontend/.env`.
 
-```bash
-streamlit run app.py
-```
-
-Run tests:
+### Tests
 
 ```bash
 pytest -q
 ```
 
-## 🧪 Example workflow
+## 🧪 Example recruiter workflow
 
-1. Paste the target **job description**.
-2. Upload a candidate resume.
-3. Enter GitHub and academic information.
-4. Add project descriptions.
-5. Review the explainable screening score and missing skills.
-6. Run the adaptive technical interview.
-7. Review interview evidence and the AI-assisted recommendation.
-8. Generate a recruiter PDF report.
+1. Open the CandidateIQ dashboard.
+2. Create or select a target role.
+3. Add a candidate and upload the resume.
+4. Provide GitHub, academic and project evidence.
+5. Run AI Screening.
+6. Inspect the score breakdown, missing skills and evidence summaries.
+7. Continue to interview/report workflows.
+8. Make the final decision with human review.
 
 ## 🔮 Roadmap
 
 - Semantic embedding-based JD matching
-- Job-specific weighting profiles
+- Job-specific scoring profiles
 - Evidence extraction with source locations from resumes
-- Secure isolated coding sandbox
-- Candidate comparison dashboard
-- Fairness benchmark and bias monitoring
-- Authentication / RBAC
+- Candidate comparison and shortlist views
+- Secure coding assessment sandbox
+- Authentication and RBAC
 - Persistent audit trail
+- Fairness benchmark and bias monitoring
 - Model evaluation benchmark
-- Containerized deployment
+- Containerized production deployment
 
 ## 👨‍💻 Author
 
@@ -200,4 +183,4 @@ pytest -q
 
 ---
 
-⭐ If you explore the project, start with `app.py`, then follow the analyzers → scoring → LLM → interview flow.
+⭐ The recommended entry point is `frontend/src/main.jsx` for the recruiter experience and `backend/main.py` for the screening API.
