@@ -1,8 +1,12 @@
-/* CandidateIQ visual layer
-   Strong SaaS contrast for both dark and light themes.
-   Theme tokens are defined by CandidateIQApp.jsx; these rules strengthen
-   field boundaries and the interview journey without changing behavior. */
-
+/* CandidateIQ visual layer — stable SaaS form system */
+:root{
+  --input:#0c1421;
+  --card:#0d1725;
+  --line:#2b3a52;
+  --surface:#101b2a;
+  --text:#f5f7ff;
+  --muted:#8ea0b8;
+}
 html{scroll-behavior:smooth}
 body{margin:0;min-width:320px;font-synthesis:none;text-rendering:optimizeLegibility}
 button,input,select,textarea{font-family:inherit}
@@ -10,105 +14,58 @@ button{transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
 button:hover:not(:disabled){transform:translateY(-1px)}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(128,101,255,.28);outline-offset:2px}
 
-/* High-contrast form system */
-.cq label{color:var(--text)!important}
-.cq .input{
-  color:var(--text)!important;
-  background:var(--input)!important;
-  border:1px solid #3b465d!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 3px 12px rgba(0,0,0,.16)!important;
-}
-.cq .input:hover{border-color:#6256a8!important}
-.cq .input:focus{
-  border-color:#8065ff!important;
-  box-shadow:0 0 0 4px rgba(128,101,255,.16),inset 0 1px 0 rgba(255,255,255,.04)!important;
-}
-.cq .input::placeholder{color:var(--muted)!important;opacity:.95!important}
-.cq select.input{color:var(--text)!important;cursor:pointer}
+/* Candidate profile: explicit layout instead of relying on incidental styles. */
+.cq .card{border:1px solid var(--line)!important;background:linear-gradient(145deg,#0e1928,#0a1420)!important;border-radius:16px!important}
+.cq .grid2{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:20px 22px!important;width:100%!important}
+.cq .grid3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:16px!important;width:100%!important}
+.cq .grid4{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important;width:100%!important}
+.cq .card label{display:block!important;width:100%!important;color:#e9edf7!important;font-size:12px!important;font-weight:700!important;line-height:1.35!important;margin:0!important}
+.cq .card label+label{margin:0!important}
+.cq .input{display:block!important;width:100%!important;min-height:48px!important;margin-top:8px!important;padding:0 14px!important;border-radius:10px!important;color:#f5f7ff!important;background:#0a121e!important;border:1px solid #34445d!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 4px 14px rgba(0,0,0,.18)!important;outline:none!important}
+.cq select.input{appearance:auto!important;cursor:pointer!important}
+.cq textarea.input{padding:13px 14px!important;min-height:110px!important;resize:vertical!important;line-height:1.5!important}
+.cq .input:hover{border-color:#5c65a1!important}
+.cq .input:focus{border-color:#8065ff!important;box-shadow:0 0 0 3px rgba(128,101,255,.14),inset 0 1px 0 rgba(255,255,255,.04)!important}
+.cq .input::placeholder{color:#71839c!important;opacity:1!important}
+.cq select.input option{background:#0d1623!important;color:#f5f7ff!important}
 
-/* The four hero pills are consolidated into the real six-stage journey below. */
-.cq .hero > div{display:none!important}
+/* Resume uploader */
+.cq .drop{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:150px!important;margin-top:9px!important;padding:26px!important;border:1px dashed #6655c9!important;border-radius:12px!important;background:linear-gradient(145deg,#0b1420,#0d1725)!important;color:#f5f7ff!important;text-align:center!important;cursor:pointer!important}
+.cq .drop:hover{border-color:#927cff!important;background:#10182a!important}
+.cq .drop input[type=file]{display:none!important}
+.cq .drop b{font-size:13px!important;margin:6px 0 3px!important}
+.cq .drop .muted{color:#8295ae!important}
 
-/* Professional interview journey / stepper */
-.cq .main > .card:first-child{
-  position:relative;
-  padding:16px 18px!important;
-  margin-bottom:28px!important;
-  background:linear-gradient(180deg,var(--card),var(--panel))!important;
-  border:1px solid #34405a!important;
-  box-shadow:0 12px 36px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.035)!important;
-  overflow:hidden;
-}
-.cq .main > .card:first-child:before{
-  content:"INTERVIEW JOURNEY";
-  display:block;
-  color:var(--muted);
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.14em;
-  margin:0 0 13px 2px;
-}
-.cq .main > .card:first-child > div{
-  position:relative;
-  min-width:700px;
-}
-.cq .main > .card:first-child .step{
-  position:relative;
-  min-height:34px;
-  align-items:center;
-  gap:8px;
-  z-index:2;
-}
-.cq .main > .card:first-child .step:after{
-  content:"";
-  position:absolute;
-  left:31px;
-  right:-6px;
-  top:13px;
-  height:1px;
-  background:linear-gradient(90deg,#8065ff88,var(--line));
-  z-index:-1;
-}
-.cq .main > .card:first-child .step:last-child:after{display:none}
-.cq .main > .card:first-child .dot{
-  width:30px!important;
-  height:30px!important;
-  min-width:30px;
-  border:2px solid #202a3c;
-  box-shadow:0 0 0 4px var(--card),0 5px 14px rgba(0,0,0,.18);
-  z-index:3;
-}
-.cq .main > .card:first-child .step span:last-child{
-  color:var(--muted)!important;
-  font-size:10px!important;
-  font-weight:800!important;
-  white-space:nowrap;
-  letter-spacing:.01em;
-  text-shadow:0 1px 8px rgba(0,0,0,.16);
-}
+/* Profile card spacing */
+.cq .main{width:100%!important;max-width:1220px!important;margin:0 auto!important;padding:34px 28px 90px!important}
+.cq .hero{padding:8px 0 26px!important}
+.cq .hero h1{color:#f7f8ff!important;font-weight:700!important;letter-spacing:-.045em!important}
+.cq .hero p{color:#91a3bb!important}
+.cq .eyebrow{color:#a894ff!important;font-weight:800!important;letter-spacing:.04em!important}
+.cq .card h2,.cq .card b{color:#f3f6fc!important}
+.cq .card .muted{color:#879ab2!important}
 
-.cq .drop{
-  color:var(--text)!important;
-  border:1px dashed #7565d6!important;
-  background:var(--input)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
-}
-.cq .drop .muted{color:var(--muted)!important}
-.cq .card{border-color:var(--line)!important}
+/* Interview journey — compact and readable, without horizontal overflow. */
+.cq .main>.card:first-child{position:relative;padding:16px 18px!important;margin-bottom:30px!important;background:linear-gradient(180deg,#0e1928,#0b1522)!important;border:1px solid #30415a!important;box-shadow:0 14px 34px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.03)!important;overflow:hidden!important}
+.cq .main>.card:first-child:before{content:"INTERVIEW JOURNEY";display:block;color:#7386a0;font-size:9px;font-weight:800;letter-spacing:.14em;margin:0 0 13px 2px}
+.cq .main>.card:first-child>div{position:relative;min-width:0!important;width:100%!important}
+.cq .main>.card:first-child .step{position:relative;min-height:34px;align-items:center;gap:8px;z-index:2}
+.cq .main>.card:first-child .step:after{content:"";position:absolute;left:31px;right:-6px;top:13px;height:1px;background:#293850;z-index:-1}
+.cq .main>.card:first-child .step:last-child:after{display:none}
+.cq .main>.card:first-child .dot{width:30px!important;height:30px!important;min-width:30px;border:2px solid #26344a;box-shadow:0 0 0 4px #0e1928,0 5px 14px rgba(0,0,0,.18);z-index:3}
+.cq .main>.card:first-child .step span:last-child{color:#8da0b8!important;font-size:10px!important;font-weight:800!important;white-space:nowrap;letter-spacing:.01em;text-shadow:none}
 
-/* Light theme keeps a crisp, neutral SaaS field treatment. */
-@media (prefers-color-scheme: light){
-  .cq .input{border-color:#c6cede!important;box-shadow:0 2px 8px rgba(31,41,68,.06)!important}
-  .cq .input:hover{border-color:#9b8fe8!important}
-  .cq .main > .card:first-child{border-color:#d4d9e6!important;box-shadow:0 10px 28px rgba(31,41,68,.08)!important}
-}
+/* Strong action buttons */
+.cq .primary{min-height:44px!important;padding:0 18px!important;border-radius:10px!important;font-size:11px!important;font-weight:800!important}
+.cq .secondary{min-height:44px!important;border:1px solid #34445d!important;background:#0c1522!important;color:#d8dfeb!important;border-radius:10px!important;padding:0 18px!important}
 
 @media(max-width:850px){
-  .cq .grid2,.cq .grid3,.cq .grid4{grid-template-columns:1fr}
-  .cq .main > .card:first-child{overflow-x:auto;scrollbar-width:thin}
+  .cq .grid2,.cq .grid3,.cq .grid4{grid-template-columns:1fr!important}
+  .cq .main{padding:24px 18px 70px!important}
+  .cq .main>.card:first-child{overflow:hidden!important}
 }
-
 @media(max-width:560px){
-  .cq .main > .card:first-child{padding:14px!important;margin-bottom:22px!important}
-  .cq .main > .card:first-child > div{min-width:680px}
+  .cq .grid2{gap:15px!important}
+  .cq .main{padding:20px 14px 60px!important}
+  .cq .main>.card:first-child{padding:14px!important}
 }
