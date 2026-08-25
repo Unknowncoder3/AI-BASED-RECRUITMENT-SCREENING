@@ -1,85 +1,21 @@
 import React,{useEffect,useRef,useState} from "react";
 
-export default function ProctorPanel({onReady,onEvent}){
-  const videoRef=useRef(null);
-  const streamRef=useRef(null);
-  const statusRef=useRef("idle");
-  const [status,setStatus]=useState("idle");
-  const [error,setError]=useState("");
-  const [full,setFull]=useState(false);
-  const [hasFrame,setHasFrame]=useState(false);
-  const emit=(type,detail="")=>onEvent?.({type,detail,time:new Date().toISOString()});
-  const setSafeStatus=value=>{statusRef.current=value;setStatus(value)};
-
-  const attachStream=async stream=>{
-    const video=videoRef.current;
-    if(!video)return;
-    video.srcObject=stream;
-    video.muted=true;
-    video.playsInline=true;
-    setHasFrame(false);
-    const play=async()=>{try{await video.play();setHasFrame(true)}catch{}};
-    if(video.readyState>=2) await play();
-    else video.onloadedmetadata=play;
-    setTimeout(()=>{if(video.readyState>=2)play()},250);
-  };
-
-  const enable=async()=>{
-    setError("");
-    setSafeStatus("requesting");
-    try{
-      if(!navigator.mediaDevices?.getUserMedia) throw new Error("Camera and microphone access is not supported in this browser.");
-      const stream=await navigator.mediaDevices.getUserMedia({
-        video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,min:15},facingMode:{ideal:"user"}},
-        audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}
-      });
-      const videoTrack=stream.getVideoTracks()[0];
-      if(!videoTrack)throw new Error("No camera video track was returned by the browser.");
-      streamRef.current=stream;
-      await attachStream(stream);
-      setSafeStatus("ready");
-      onReady?.(stream);
-      emit("proctoring_started");
-    }catch(e){
-      setSafeStatus("denied");
-      setError(e?.message||"Camera/microphone permission was denied.");
-      emit("permission_error",e?.message||"");
-    }
-  };
-
+export default function ProctorPanel({onReady,onEvent,onTerminate}){
+  const videoRef=useRef(null);const streamRef=useRef(null);const statusRef=useRef("idle");const violationsRef=useRef({});const terminatedRef=useRef(false);const faceMissRef=useRef(0);
+  const [status,setStatus]=useState("idle");const [error,setError]=useState("");const [full,setFull]=useState(false);const [hasFrame,setHasFrame]=useState(false);const [violation,setViolation]=useState("");
+  const emit=(type,detail="")=>onEvent?.({type,detail,time:new Date().toISOString()});const setSafeStatus=value=>{statusRef.current=value;setStatus(value)};
+  const terminate=(type,detail)=>{if(terminatedRef.current)return;terminatedRef.current=true;setSafeStatus("terminated");setViolation(detail);emit(type,detail);onTerminate?.({type,detail});};
+  const recordViolation=(type,detail,limit=2)=>{const n=(violationsRef.current[type]||0)+1;violationsRef.current[type]=n;setViolation(`${detail} (${n}/${limit})`);emit(type,`${detail} | occurrence ${n}`);if(n>=limit)terminate("proctoring_terminated",`${detail}. Repeated integrity violation detected; assessment stopped.`);};
+  const attachStream=async stream=>{const video=videoRef.current;if(!video)return;video.srcObject=stream;video.muted=true;video.playsInline=true;setHasFrame(false);const play=async()=>{try{await video.play();setHasFrame(true)}catch{}};if(video.readyState>=2)await play();else video.onloadedmetadata=play;setTimeout(()=>{if(video.readyState>=2)play()},250)};
+  const enable=async()=>{setError("");setSafeStatus("requesting");try{if(!navigator.mediaDevices?.getUserMedia)throw new Error("Camera and microphone access is not supported in this browser.");const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,min:15},facingMode:{ideal:"user"}},audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});const videoTrack=stream.getVideoTracks()[0];const audioTrack=stream.getAudioTracks()[0];if(!videoTrack||!audioTrack)throw new Error("Both camera and microphone tracks are required.");streamRef.current=stream;await attachStream(stream);videoTrack.onended=()=>terminate("camera_lost","Camera feed ended. Restore camera access to continue.");audioTrack.onended=()=>terminate("microphone_lost","Microphone feed ended. Restore microphone access to continue.");videoTrack.onmute=()=>recordViolation("camera_muted","Camera feed was muted",1);audioTrack.onmute=()=>recordViolation("microphone_muted","Microphone feed was muted",1);setSafeStatus("ready");onReady?.(stream);emit("proctoring_started","Camera + microphone monitoring active");}catch(e){setSafeStatus("denied");setError(e?.message||"Camera/microphone permission was denied.");emit("permission_error",e?.message||"")}};
   const goFullscreen=async()=>{try{await document.documentElement.requestFullscreen?.();setFull(true);emit("fullscreen_entered")}catch(e){emit("fullscreen_error",e?.message||"")}};
-
-  useEffect(()=>{
-    const vis=()=>{if(statusRef.current==="ready"&&document.hidden)emit("tab_hidden","Candidate switched away from the assessment")};
-    const blur=()=>{if(statusRef.current==="ready")emit("window_blur")};
-    const fs=()=>setFull(Boolean(document.fullscreenElement));
-    document.addEventListener("visibilitychange",vis);
-    window.addEventListener("blur",blur);
-    document.addEventListener("fullscreenchange",fs);
-    return()=>{
-      document.removeEventListener("visibilitychange",vis);
-      window.removeEventListener("blur",blur);
-      document.removeEventListener("fullscreenchange",fs);
-      streamRef.current?.getTracks().forEach(t=>t.stop());
-      streamRef.current=null;
-      if(videoRef.current){videoRef.current.pause();videoRef.current.srcObject=null}
-    };
-  },[]);
-
-  return <div className="card" style={{padding:16,marginBottom:16,borderColor:status==="ready"?"#3ddc9766":"var(--line)"}}>
-    <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}>
-      <div style={{width:230,height:138,borderRadius:14,overflow:"hidden",background:"#03050a",border:"1px solid var(--line)",position:"relative"}}>
-        <video ref={videoRef} autoPlay muted playsInline preload="auto" style={{display:"block",width:"100%",height:"100%",objectFit:"cover",transform:"scaleX(-1)",background:"#03050a"}} />
-        {status!=="ready"&&<div style={{position:"absolute",inset:0,display:"grid",placeItems:"center",color:"var(--muted)",fontSize:11,textAlign:"center",padding:12}}>Camera preview<br/>not enabled</div>}
-        {status==="ready"&&!hasFrame&&<div style={{position:"absolute",inset:0,display:"grid",placeItems:"center",color:"var(--muted)",fontSize:11}}>Starting camera…</div>}
-        {status==="ready"&&<span style={{position:"absolute",left:8,bottom:8,background:"#000a",padding:"4px 7px",borderRadius:7,fontSize:9}}>● LIVE</span>}
-      </div>
-      <div style={{flex:1,minWidth:220}}>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><span className="tag">PROCTORED SESSION</span><span className="status" style={{fontSize:10,color:status==="ready"?"#3ddc97":"var(--muted)"}}><i style={{background:status==="ready"?"#3ddc97":"var(--muted)"}}/>{status==="ready"?"Camera + microphone active":status==="requesting"?"Requesting permissions…":"Camera + microphone required"}</span></div>
-        <p className="muted" style={{fontSize:11,lineHeight:1.5,margin:"8px 0"}}>Camera preview, microphone capture, tab switching, focus loss and fullscreen status are monitored during the assessment.</p>
-        {error&&<div style={{color:"#ff8b96",fontSize:11,marginBottom:8}}>{error} Open browser site settings and allow Camera + Microphone, then retry.</div>}
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{status!=="ready"&&<button className="primary" onClick={enable} disabled={status==="requesting"}>{status==="requesting"?"Enabling…":"Enable camera & microphone"}</button>}{status==="ready"&&<button className="secondary" onClick={goFullscreen}>{full?"✓ Fullscreen active":"Enter fullscreen"}</button>}</div>
-      </div>
-    </div>
-  </div>
+  useEffect(()=>{if(status!=="ready")return;
+    const paste=e=>{e.preventDefault();recordViolation("paste_blocked","Paste blocked",3)};const copy=e=>{e.preventDefault();recordViolation("copy_blocked","Copy blocked",3)};const cut=e=>{e.preventDefault();recordViolation("cut_blocked","Cut blocked",3)};const menu=e=>{e.preventDefault();recordViolation("context_menu","Context menu blocked",3)};
+    const key=e=>{const mod=e.ctrlKey||e.metaKey;if(mod&&["c","v","x","a"].includes(e.key.toLowerCase())){e.preventDefault();recordViolation(e.key.toLowerCase()==="v"?"paste_blocked":e.key.toLowerCase()==="c"?"copy_blocked":"cut_blocked",`${e.key.toUpperCase()} shortcut blocked`,3)}if(e.key==="F12"||(mod&&e.shiftKey&&["i","j","c"].includes(e.key.toLowerCase()))){e.preventDefault();recordViolation("devtools_shortcut","Developer-tools shortcut blocked",2)}};
+    const vis=()=>{if(document.hidden)recordViolation("tab_hidden","Assessment tab/window left",2)};const blur=()=>recordViolation("window_blur","Assessment window lost focus",3);const fs=()=>{const active=Boolean(document.fullscreenElement);setFull(active);if(!active)recordViolation("fullscreen_exit","Fullscreen was exited",2)};
+    document.addEventListener("paste",paste);document.addEventListener("copy",copy);document.addEventListener("cut",cut);document.addEventListener("contextmenu",menu);document.addEventListener("keydown",key);document.addEventListener("visibilitychange",vis);window.addEventListener("blur",blur);document.addEventListener("fullscreenchange",fs);
+    let faceTimer=null;const FaceDetectorClass=window.FaceDetector;if(FaceDetectorClass&&videoRef.current){const detector=new FaceDetectorClass({fastMode:true,maxDetectedFaces:3});faceTimer=setInterval(async()=>{if(terminatedRef.current||!videoRef.current||videoRef.current.readyState<2)return;try{const faces=await detector.detect(videoRef.current);if(faces.length===0){faceMissRef.current+=1;if(faceMissRef.current>=3)recordViolation("no_face","No face detected in the camera frame",2)}else if(faces.length>1){recordViolation("multiple_faces","Multiple faces detected in the camera frame",2);faceMissRef.current=0}else faceMissRef.current=0}catch{}},2000)}
+    return()=>{document.removeEventListener("paste",paste);document.removeEventListener("copy",copy);document.removeEventListener("cut",cut);document.removeEventListener("contextmenu",menu);document.removeEventListener("keydown",key);document.removeEventListener("visibilitychange",vis);window.removeEventListener("blur",blur);document.removeEventListener("fullscreenchange",fs);if(faceTimer)clearInterval(faceTimer);streamRef.current?.getTracks().forEach(t=>t.stop());streamRef.current=null;if(videoRef.current){videoRef.current.pause();videoRef.current.srcObject=null}};
+  },[status]);
+  return <div className="card" style={{padding:16,marginBottom:16,borderColor:status==="ready"?"#3ddc9766":"var(--line)"}}><div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}><div style={{width:230,height:138,borderRadius:14,overflow:"hidden",background:"#03050a",border:"1px solid var(--line)",position:"relative"}}><video ref={videoRef} autoPlay muted playsInline preload="auto" style={{display:"block",width:"100%",height:"100%",objectFit:"cover",transform:"scaleX(-1)",background:"#03050a"}}/>{status!=="ready"&&<div style={{position:"absolute",inset:0,display:"grid",placeItems:"center",color:"var(--muted)",fontSize:11,textAlign:"center",padding:12}}>Camera preview<br/>not enabled</div>}{status==="ready"&&!hasFrame&&<div style={{position:"absolute",inset:0,display:"grid",placeItems:"center",color:"var(--muted)",fontSize:11}}>Starting camera…</div>}{status==="ready"&&<span style={{position:"absolute",left:8,bottom:8,background:"#000a",padding:"4px 7px",borderRadius:7,fontSize:9}}>● LIVE</span>}</div><div style={{flex:1,minWidth:220}}><div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><span className="tag">PROCTORED SESSION</span><span className="status" style={{fontSize:10,color:status==="ready"?"#3ddc97":"var(--muted)"}}><i style={{background:status==="ready"?"#3ddc97":"var(--muted)"}}/>{status==="ready"?"Camera + microphone active":status==="requesting"?"Requesting permissions…":status==="terminated"?"Assessment terminated":"Camera + microphone required"}</span></div><p className="muted" style={{fontSize:11,lineHeight:1.5,margin:"8px 0"}}>Monitoring: camera/microphone health, copy/paste, context menu, focus, tab changes, fullscreen and supported face-count detection.</p>{error&&<div style={{color:"#ff8b96",fontSize:11,marginBottom:8}}>{error} Allow Camera + Microphone in browser site settings, then retry.</div>}{violation&&<div style={{color:"#ffb86b",fontSize:11,marginBottom:8}}>⚠ {violation}</div>}<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{status!=="ready"&&status!=="terminated"&&<button className="primary" onClick={enable} disabled={status==="requesting"}>{status==="requesting"?"Enabling…":"Enable camera & microphone"}</button>}{status==="ready"&&<button className="secondary" onClick={goFullscreen}>{full?"✓ Fullscreen active":"Enter fullscreen"}</button>}{status==="terminated"&&<span className="tag">🚨 SESSION STOPPED</span>}</div></div></div></div>;
 }
