@@ -1,13 +1,20 @@
-def final_decision(scores, emotion_flags, cheating_flags):
-    # 🚫 No interview conducted
-    if not scores:
+from __future__ import annotations
+
+
+def final_decision(screening_score: float, interview_scores: list[float]) -> str:
+    """Return an explainable recommendation; never treat it as an autonomous hiring decision."""
+    if screening_score < 60:
         return "REJECT"
-
-    avg_score = sum(scores) / len(scores)
-
-    if avg_score >= 7:
-        return "HIRE"
-    elif avg_score >= 5:
+    if not interview_scores:
         return "HOLD"
-    else:
-        return "REJECT"
+
+    interview_score = sum(interview_scores) / len(interview_scores) * 10
+    combined = screening_score * 0.6 + interview_score * 0.4
+
+    if combined >= 80:
+        return "STRONG MATCH"
+    if combined >= 65:
+        return "MATCH"
+    if combined >= 50:
+        return "HOLD"
+    return "REJECT"
