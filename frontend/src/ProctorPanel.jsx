@@ -7,8 +7,22 @@ export default function ProctorPanel({onReady,onEvent}){
   const [status,setStatus]=useState("idle");
   const [error,setError]=useState("");
   const [full,setFull]=useState(false);
+  const [hasFrame,setHasFrame]=useState(false);
   const emit=(type,detail="")=>onEvent?.({type,detail,time:new Date().toISOString()});
   const setSafeStatus=value=>{statusRef.current=value;setStatus(value)};
+
+  const attachStream=async stream=>{
+    const video=videoRef.current;
+    if(!video)return;
+    video.srcObject=stream;
+    video.muted=true;
+    video.playsInline=true;
+    setHasFrame(false);
+    const play=async()=>{try{await video.play();setHasFrame(true)}catch{}};
+    if(video.readyState>=2) await play();
+    else video.onloadedmetadata=play;
+    setTimeout(()=>{if(video.readyState>=2)play()},250);
+  };
 
   const enable=async()=>{
     setError("");
@@ -16,14 +30,13 @@ export default function ProctorPanel({onReady,onEvent}){
     try{
       if(!navigator.mediaDevices?.getUserMedia) throw new Error("Camera and microphone access is not supported in this browser.");
       const stream=await navigator.mediaDevices.getUserMedia({
-        video:{width:{ideal:1280},height:{ideal:720},facingMode:"user"},
-        audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}
+        video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,min:15},facingMode:{ideal:"user"}},
+        audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}
       });
+      const videoTrack=stream.getVideoTracks()[0];
+      if(!videoTrack)throw new Error("No camera video track was returned by the browser.");
       streamRef.current=stream;
-      if(videoRef.current){
-        videoRef.current.srcObject=stream;
-        try{await videoRef.current.play()}catch{}
-      }
+      await attachStream(stream);
       setSafeStatus("ready");
       onReady?.(stream);
       emit("proctoring_started");
@@ -49,14 +62,16 @@ export default function ProctorPanel({onReady,onEvent}){
       document.removeEventListener("fullscreenchange",fs);
       streamRef.current?.getTracks().forEach(t=>t.stop());
       streamRef.current=null;
+      if(videoRef.current){videoRef.current.pause();videoRef.current.srcObject=null}
     };
   },[]);
 
   return <div className="card" style={{padding:16,marginBottom:16,borderColor:status==="ready"?"#3ddc9766":"var(--line)"}}>
     <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}>
       <div style={{width:230,height:138,borderRadius:14,overflow:"hidden",background:"#03050a",border:"1px solid var(--line)",position:"relative"}}>
-        <video ref={videoRef} autoPlay muted playsInline style={{display:"block",width:"100%",height:"100%",objectFit:"cover",transform:"scaleX(-1)",background:"#03050a"}} />
+        <video ref={videoRef} autoPlay muted playsInline preload="auto" style={{display:"block",width:"100%",height:"100%",objectFit:"cover",transform:"scaleX(-1)",background:"#03050a"}} />
         {status!=="ready"&&<div style={{position:"absolute",inset:0,display:"grid",placeItems:"center",color:"var(--muted)",fontSize:11,textAlign:"center",padding:12}}>Camera preview<br/>not enabled</div>}
+        {status==="ready"&&!hasFrame&&<div style={{position:"absolute",inset:0,display:"grid",placeItems:"center",color:"var(--muted)",fontSize:11}}>Starting camera…</div>}
         {status==="ready"&&<span style={{position:"absolute",left:8,bottom:8,background:"#000a",padding:"4px 7px",borderRadius:7,fontSize:9}}>● LIVE</span>}
       </div>
       <div style={{flex:1,minWidth:220}}>
